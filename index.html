@@ -216,8 +216,8 @@
                 await mainProcess();
                 mainInterval = setTimeout(async () => {
                     await mainProcess();
-                    mainInterval = setTimeout(async () => { await mainProcess(); }, 300000);
-                }, 300000);
+                    mainInterval = setTimeout(async () => { await mainProcess(); }, 120000);
+                }, 120000);
 
                 document.getElementById('FirstStartAutoUpdate').style.display = 'none';
                 document.getElementById('StartAutoUpdate').style.display = 'none';
