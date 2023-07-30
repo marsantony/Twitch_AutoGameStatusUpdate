@@ -48,11 +48,6 @@
         </div>
 
         <div class="form-group">
-            <label for="azureFunctionKey">Azure Function Key</label>
-            <input type="text" id="azureFunctionKey" class="form-control" />
-        </div>
-
-        <div class="form-group">
             <label for="gameName">自訂遊戲名稱</label>
             <input type="text" id="gameName" class="form-control" />
         </div>
@@ -72,11 +67,9 @@
 
         <script>
             const LOCALSTORAGE_JWTKEY = 'Twitch_AutoGameStatusUpdate_JWTKey';
-            const LOCALSTORAGE_AZUREFUNCTIONKEY = 'Twitch_AutoGameStatusUpdate_AzureFunctionKey';
-
+          
             //將預設值帶入
             document.getElementById('JWTKey').value = localStorage.getItem(LOCALSTORAGE_JWTKEY) || '';
-            document.getElementById('azureFunctionKey').value = localStorage.getItem(LOCALSTORAGE_AZUREFUNCTIONKEY) || '';
 
             const showError = (message) => {
                 document.getElementById('successAlert').innerHTML = '';
@@ -101,17 +94,18 @@
             var steamGameName = '';
             var mainInterval;
 
-            //取得steam狀態，run我的azure function T_T
+            //取得steam狀態
+            //azure function 發幾次就要0.01元，換Cloud Function
             const getSteamStatus = async () => {
                 try {
-                    let response = await fetch(`https://getorangesteamstatus.azurewebsites.net/api/Get?code=${document.getElementById('azureFunctionKey').value}`);
+                    let response = await fetch(`https://asia-east1-steamwebapi-394409.cloudfunctions.net/GetOrangeSteamStatus`);
                     console.log(response);
                     if (!response.ok) {
                         throw new Error(`${response.status}:${response.statusText}`);
                     }
                     let data = await response.json();
                     console.log(data);
-                    steamGameName = data['response']['players'][0]['gameextrainfo'];
+                    steamGameName = data['GameName'];
                 } catch (error) {
                     console.error('Error:', error);
                     errorMsg = `無法取得steam狀態`;
@@ -209,7 +203,6 @@
 
                 //將預設值寫入localStorage
                 localStorage.setItem(LOCALSTORAGE_JWTKEY, document.getElementById('JWTKey').value);
-                localStorage.setItem(LOCALSTORAGE_AZUREFUNCTIONKEY, document.getElementById('azureFunctionKey').value);
 
                 document.getElementById('FirstStartAutoUpdate').style.display = 'none';
                 document.getElementById('StartAutoUpdate').style.display = 'none';
