@@ -54,7 +54,10 @@
         <br />
         <div class="form-group" style="text-align:right;">
             <input type="button" id="FirstStartAutoUpdate" class="btn btn-primary" value="開始自動更新" />
-
+            <button class="btn btn-primary" type="button" id="loading" disabled  style="display:none;">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Loading...
+            </button>
             <input type="button" id="StartAutoUpdate" class="btn btn-primary" value="開始自動更新" style="display:none;" />
             <input type="button" id="stopAutoUpdate" class="btn btn-danger" value="停止自動更新" style="display:none;" />
         </div>
@@ -212,6 +215,10 @@
             });
 
             document.getElementById('StartAutoUpdate').addEventListener('click', async (e) => {
+                document.getElementById('loading').style.display = '';
+
+                document.getElementById('StartAutoUpdate').style.display = 'none';
+
                 //每五分鐘跑一次
                 await mainProcess();
                 mainInterval = setTimeout(async () => {
@@ -222,6 +229,8 @@
                 document.getElementById('FirstStartAutoUpdate').style.display = 'none';
                 document.getElementById('StartAutoUpdate').style.display = 'none';
                 document.getElementById('stopAutoUpdate').style.display = '';
+
+                document.getElementById('loading').style.display = 'none';
             });
 
             document.getElementById('stopAutoUpdate').addEventListener('click', (e) => {
