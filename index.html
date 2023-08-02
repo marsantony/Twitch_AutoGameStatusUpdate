@@ -84,9 +84,10 @@
             document.getElementById('JWTKey').value = localStorage.getItem(LOCALSTORAGE_JWTKEY) || '';
 
             const log = (message) => {
-                console.log(new Date().toLocaleString())
+                var currentStamp = new Date().toLocaleString();
+                console.log(currentStamp);
                 console.log(message);
-                document.getElementById('log').value = `${document.getElementById('log').value}${message.toString()}\r\n`;
+                document.getElementById('log').value = `${currentStamp}:${document.getElementById('log').value}${JSON.stringify(message)}\r\n`;
             };
 
             const showError = (message) => {
