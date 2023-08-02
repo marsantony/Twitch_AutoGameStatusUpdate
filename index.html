@@ -87,7 +87,7 @@
                 var currentStamp = new Date().toLocaleString();
                 console.log(currentStamp);
                 console.log(message);
-                document.getElementById('log').value = `${currentStamp}:${document.getElementById('log').value}${JSON.stringify(message)}\r\n`;
+                document.getElementById('log').value = `${currentStamp}:${JSON.stringify(message)}\r\n${document.getElementById('log').value}`;
             };
 
             const showError = (message) => {
