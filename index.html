@@ -236,7 +236,7 @@
             var currentGameName = '';
             var isEnable = false;
 
-            document.getElementById('ImmediatelyUpdate').addEventListener('click', (e) => {
+            document.getElementById('ImmediatelyUpdate').addEventListener('click', async (e) => {
 
                 //將預設值寫入localStorage
                 localStorage.setItem(LOCALSTORAGE_JWTKEY, document.getElementById('JWTKey').value);
