@@ -57,6 +57,7 @@
         </div>
         <br />
         <div class="form-group" style="text-align:right;">
+            <input type="button" id="ImmediatelyUpdate" class="btn btn-primary" value="立即更新" />
             <input type="button" id="FirstStartAutoUpdate" class="btn btn-primary" value="開始自動更新" />
             <button class="btn btn-primary" type="button" id="loading" disabled style="display:none;">
                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -234,6 +235,15 @@
 
             var currentGameName = '';
             var isEnable = false;
+
+            document.getElementById('ImmediatelyUpdate').addEventListener('click', (e) => {
+
+                //將預設值寫入localStorage
+                localStorage.setItem(LOCALSTORAGE_JWTKEY, document.getElementById('JWTKey').value);
+
+                await mainProcess();
+            });
+
             document.getElementById('FirstStartAutoUpdate').addEventListener('click', (e) => {
 
                 //將預設值寫入localStorage
