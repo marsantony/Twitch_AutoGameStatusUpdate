@@ -120,7 +120,7 @@
                 try {
                     log('取得steam狀態');
                     let response = await fetch(`https://asia-east1-steamwebapi-394409.cloudfunctions.net/GetOrangeSteamStatus`);
-                    log(response);
+                    console.log(response);
                     if (!response.ok) {
                         throw new Error(`${response.status}:${response.statusText}`);
                     }
@@ -145,7 +145,7 @@
                             'Authorization': `Bearer ${document.getElementById('JWTKey').value}`
                         }
                     });
-                    log(response);
+                    console.log(response);
                     if (!response.ok) {
                         throw new Error(`${response.status}:${response.statusText}`);
                     }
@@ -173,7 +173,7 @@
                         },
                         body: JSON.stringify(commandJson),
                     });
-                    log(response);
+                    console.log(response);
                     if (!response.ok) {
                         throw new Error(`${response.status}:${response.statusText}`);
                     }
