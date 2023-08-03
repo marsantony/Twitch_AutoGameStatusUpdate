@@ -30,6 +30,26 @@
 </head>
 
 <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="https://marsantony.github.io/">Mars Liu</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNavDropdown">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="./TwitchSelfReply">Twitch自動回覆(用自己的帳號)</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="./Twitch_AutoGameStatusUpdate">蝦愛橘子的!遊戲指令更新</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+
     <div class="mx-auto col-10 col-md-8 col-lg-6">
         <br />
         <br />
@@ -78,13 +98,13 @@
     </div>
 
 
-        <!-- Option 1: Bootstrap Bundle with Popper -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ" crossorigin="anonymous"></script>
-        <script src="https://github.com/tmijs/tmi.js/releases/download/v1.8.5/tmi.min.js"></script>
+    <!-- Option 1: Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ" crossorigin="anonymous"></script>
+    <script src="https://github.com/tmijs/tmi.js/releases/download/v1.8.5/tmi.min.js"></script>
 
-        <script>
+    <script>
             const LOCALSTORAGE_JWTKEY = 'Twitch_AutoGameStatusUpdate_JWTKey';
-          
+
             //將預設值帶入
             document.getElementById('JWTKey').value = localStorage.getItem(LOCALSTORAGE_JWTKEY) || '';
 
@@ -121,7 +141,7 @@
             //取得steam狀態
             //azure function 發幾次就要0.01元，換Cloud Function
             const getSteamStatus = async () => {
-                
+
                 try {
                     log('取得steam狀態');
                     let response = await fetch(`https://asia-east1-steamwebapi-394409.cloudfunctions.net/GetOrangeSteamStatus`);
@@ -170,7 +190,7 @@
                 try {
                     log('更新目前指令的內容');
                     let response = await fetch(`https://api.streamelements.com/kappa/v2/bot/commands/${channelId}/${updateCommandId}`, {
-                        method: 'PUT', 
+                        method: 'PUT',
                         headers: {
                             'Accept': 'application/json; charset=utf-8, application/json',
                             'Authorization': `Bearer ${document.getElementById('JWTKey').value}`,
@@ -283,7 +303,7 @@
                 document.getElementById('StartAutoUpdate').style.display = '';
                 document.getElementById('stopAutoUpdate').style.display = 'none';
             });
-        </script>
+    </script>
 </body>
 
 </html>
