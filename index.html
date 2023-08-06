@@ -41,8 +41,15 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/TwitchSelfReply">Twitch自動回覆(用自己的帳號)</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/Twitch_AutoGameStatusUpdate">蝦愛橘子的!遊戲指令更新</a>
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            蝦愛橘子相關
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                            <li><a class="dropdown-item" href="/Twitch_AutoGameStatusUpdate">!遊戲指令更新</a></li>
+                            <li><a class="dropdown-item" href="/Youtube_AutoVideosUpdate">!YT指令更新</a></li>
+                        </ul>
                     </li>
                 </ul>
             </div>
@@ -81,7 +88,7 @@
             <input type="button" id="FirstStartAutoUpdate" class="btn btn-primary" value="開始自動更新" />
             <button class="btn btn-primary" type="button" id="loading" disabled style="display:none;">
                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                Loading...
+                <span id="nextUpdateStamp">Loading...</span>
             </button>
             <input type="button" id="StartAutoUpdate" class="btn btn-primary" value="開始自動更新" style="display:none;" />
             <input type="button" id="stopAutoUpdate" class="btn btn-danger" value="停止自動更新" style="display:none;" />
@@ -281,10 +288,15 @@
 
                 document.getElementById('StartAutoUpdate').style.display = 'none';
 
+                let autoUpdateDurationByMinute = 2;
+
                 //每2分鐘跑一次
                 const runMainProcess = async () => {
                     await mainProcess();
-                    mainInterval = setTimeout(runMainProcess, 120000);
+                    let now = new Date();
+                    now.setMinutes(now.getMinutes() + autoUpdateDurationByMinute);
+                    document.getElementById('nextUpdateStamp').innerHTML = `下次自動更新時間：${now.toLocaleString()}`;
+                    mainInterval = setTimeout(runMainProcess, autoUpdateDurationByMinute * 60 * 1000);
                 };
                 await runMainProcess();
 
@@ -302,6 +314,9 @@
                 document.getElementById('FirstStartAutoUpdate').style.display = 'none';
                 document.getElementById('StartAutoUpdate').style.display = '';
                 document.getElementById('stopAutoUpdate').style.display = 'none';
+
+                document.getElementById('nextUpdateStamp').innerHTML = 'Loading...';
+                document.getElementById('loading').style.display = 'none';
             });
     </script>
 </body>
