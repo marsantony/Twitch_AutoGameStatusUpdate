@@ -283,10 +283,11 @@
 
                 //每2分鐘跑一次
                 await mainProcess();
-                mainInterval = setTimeout(async () => {
+                const runMainProcess = async () => {
                     await mainProcess();
-                    mainInterval = setTimeout(async () => { await mainProcess(); }, 120000);
-                }, 120000);
+                    mainInterval = setTimeout(async () => { await runMainProcess(); }, 120000);
+                };
+                mainInterval = setTimeout(runMainProcess, 120000);
 
                 document.getElementById('FirstStartAutoUpdate').style.display = 'none';
                 document.getElementById('StartAutoUpdate').style.display = 'none';
