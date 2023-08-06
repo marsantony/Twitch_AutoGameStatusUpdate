@@ -282,12 +282,11 @@
                 document.getElementById('StartAutoUpdate').style.display = 'none';
 
                 //每2分鐘跑一次
-                await mainProcess();
                 const runMainProcess = async () => {
                     await mainProcess();
-                    mainInterval = setTimeout(async () => { await runMainProcess(); }, 120000);
+                    mainInterval = setTimeout(runMainProcess, 120000);
                 };
-                mainInterval = setTimeout(runMainProcess, 120000);
+                await runMainProcess();
 
                 document.getElementById('FirstStartAutoUpdate').style.display = 'none';
                 document.getElementById('StartAutoUpdate').style.display = 'none';
