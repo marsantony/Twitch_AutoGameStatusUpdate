@@ -110,214 +110,221 @@
     <script src="https://github.com/tmijs/tmi.js/releases/download/v1.8.5/tmi.min.js"></script>
 
     <script>
-            const LOCALSTORAGE_JWTKEY = 'Twitch_AutoGameStatusUpdate_JWTKey';
+        const LOCALSTORAGE_JWTKEY = 'Twitch_AutoGameStatusUpdate_JWTKey';
 
-            //將預設值帶入
-            document.getElementById('JWTKey').value = localStorage.getItem(LOCALSTORAGE_JWTKEY) || '';
+        //將預設值帶入
+        document.getElementById('JWTKey').value = localStorage.getItem(LOCALSTORAGE_JWTKEY) || '';
 
-            const log = (message) => {
-                var currentStamp = new Date().toLocaleString();
-                console.log(currentStamp);
-                console.log(message);
-                document.getElementById('log').value = `${currentStamp}:${JSON.stringify(message)}\r\n${document.getElementById('log').value}`;
-            };
+        const log = (message) => {
+            var currentStamp = new Date().toLocaleString();
+            console.log(currentStamp);
+            console.log(message);
+            document.getElementById('log').value = `${currentStamp}:${JSON.stringify(message)}\r\n${document.getElementById('log').value}`;
+        };
 
-            const showError = (message) => {
-                document.getElementById('successAlert').innerHTML = '';
-                document.getElementById('successAlert').style.display = 'none';
+        const hideAll = () => {
+            document.getElementById('successAlert').style.display = 'none';
+            document.getElementById('errorAlert').style.display = 'none';
+        };
 
-                document.getElementById('errorAlert').innerHTML = message;
-                document.getElementById('errorAlert').style.display = '';
-            };
+        const showError = (message) => {
+            document.getElementById('successAlert').innerHTML = '';
+            document.getElementById('successAlert').style.display = 'none';
 
-            const showSuccess = (message) => {
-                document.getElementById('errorAlert').innerHTML = '';
-                document.getElementById('errorAlert').style.display = 'none';
+            document.getElementById('errorAlert').innerHTML = message;
+            document.getElementById('errorAlert').style.display = '';
+        };
 
-                document.getElementById('successAlert').innerHTML = message;
-                document.getElementById('successAlert').style.display = '';
-            };
+        const showSuccess = (message) => {
+            document.getElementById('errorAlert').innerHTML = '';
+            document.getElementById('errorAlert').style.display = 'none';
 
-            const channelId = '5929d1f610ee005fd32bc0ea';
-            const updateCommandId = '59d493bad681412cb1cd2787';
+            document.getElementById('successAlert').innerHTML = message;
+            document.getElementById('successAlert').style.display = '';
+        };
 
-            var errorMsg = '';
-            var steamGameName = '';
-            var mainInterval;
+        const channelId = '5929d1f610ee005fd32bc0ea';
+        const updateCommandId = '59d493bad681412cb1cd2787';
 
-            //取得steam狀態
-            //azure function 發幾次就要0.01元，換Cloud Function
-            const getSteamStatus = async () => {
+        var errorMsg = '';
+        var steamGameName = '';
+        var mainInterval;
 
-                try {
-                    log('取得steam狀態');
-                    let response = await fetch(`https://asia-east1-steamwebapi-394409.cloudfunctions.net/GetOrangeSteamStatus`);
-                    console.log(response);
-                    if (!response.ok) {
-                        throw new Error(`${response.status}:${response.statusText}`);
-                    }
-                    let data = await response.json();
-                    log(data);
-                    steamGameName = data['GameName'];
-                } catch (error) {
-                    console.error('Error:', error);
-                    errorMsg = `無法取得steam狀態`;
+        //取得steam狀態
+        //azure function 發幾次就要0.01元，換Cloud Function
+        const getSteamStatus = async () => {
 
-                    throw error;
+            try {
+                log('取得steam狀態');
+                let response = await fetch(`https://asia-east1-steamwebapi-394409.cloudfunctions.net/GetOrangeSteamStatus`);
+                console.log(response);
+                if (!response.ok) {
+                    throw new Error(`${response.status}:${response.statusText}`);
                 }
-            };
+                let data = await response.json();
+                log(data);
+                steamGameName = data['GameName'];
+            } catch (error) {
+                console.error('Error:', error);
+                errorMsg = `無法取得steam狀態`;
 
-            //取得目前指令的內容
-            const getStreamelementsCommand = async () => {
-                try {
-                    log('取得目前指令的內容');
-                    let response = await fetch(`https://api.streamelements.com/kappa/v2/bot/commands/${channelId}/${updateCommandId}`, {
-                        headers: {
-                            'Accept': 'application/json; charset=utf-8, application/json',
-                            'Authorization': `Bearer ${document.getElementById('JWTKey').value}`
-                        }
-                    });
-                    console.log(response);
-                    if (!response.ok) {
-                        throw new Error(`${response.status}:${response.statusText}`);
-                    }
-                    let data = await response.json();
-                    log(data);
-                    return data;
-                } catch (error) {
-                    console.error('Error:', error);
-                    errorMsg = `無法取得目前指令的內容`;
-
-                    throw error;
-                }
-            };
-
-            //更新目前指令的內容
-            const updateStreamelementsCommand = async (commandJson) => {
-                try {
-                    log('更新目前指令的內容');
-                    let response = await fetch(`https://api.streamelements.com/kappa/v2/bot/commands/${channelId}/${updateCommandId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Accept': 'application/json; charset=utf-8, application/json',
-                            'Authorization': `Bearer ${document.getElementById('JWTKey').value}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(commandJson),
-                    });
-                    console.log(response);
-                    if (!response.ok) {
-                        throw new Error(`${response.status}:${response.statusText}`);
-                    }
-                    let data = await response.json();
-                    log(data);
-
-                    return data;
-                } catch (error) {
-                    console.error('Error:', error);
-                    errorMsg = `無法更新目前指令的內容`;
-
-                    throw error;
-                }
+                throw error;
             }
+        };
 
-            //完整流程
-            const mainProcess = async () => {
-                try {
-                    log('完整流程開始');
-
-                    //撈取steam遊戲狀態
-                    await getSteamStatus();
-
-                    //顯示在畫面上
-                    document.getElementById('currentSteamGameName').innerHTML = steamGameName;
-
-                    //自訂遊戲名稱優先，沒有遊戲名稱就不做下去
-                    let currentGameName = document.getElementById('gameName').value || steamGameName;
-                    if (!currentGameName)
-                        return;
-
-                    let commandJson = await getStreamelementsCommand();
-                    let commandReplyGameName = /『(.+)』/gm.exec(commandJson['reply'])[1];
-
-                    //遊戲名稱一致，不用改
-                    if (currentGameName === commandReplyGameName)
-                        return;
-
-                    //修改遊戲名稱
-                    commandJson['reply'] = commandJson['reply'].replace(/『(.+)』/gm, `『${currentGameName}』`);
-
-                    //更新指令內容
-                    await updateStreamelementsCommand(commandJson); //不知道為啥要更新兩次聊天室才能正常= =
-                    let updatedCommandJson = await updateStreamelementsCommand(commandJson);
-
-                    showSuccess(`更新成功<br/>${updatedCommandJson['reply']}`);
-                } catch (error) {
-                    showError(`${errorMsg}<br/>給開發者的錯誤訊息內容${error}`);
+        //取得目前指令的內容
+        const getStreamelementsCommand = async () => {
+            try {
+                log('取得目前指令的內容');
+                let response = await fetch(`https://api.streamelements.com/kappa/v2/bot/commands/${channelId}/${updateCommandId}`, {
+                    headers: {
+                        'Accept': 'application/json; charset=utf-8, application/json',
+                        'Authorization': `Bearer ${document.getElementById('JWTKey').value}`
+                    }
+                });
+                console.log(response);
+                if (!response.ok) {
+                    throw new Error(`${response.status}:${response.statusText}`);
                 }
-                finally {
-                    log('完整流程結束');
+                let data = await response.json();
+                log(data);
+                return data;
+            } catch (error) {
+                console.error('Error:', error);
+                errorMsg = `無法取得目前指令的內容`;
+
+                throw error;
+            }
+        };
+
+        //更新目前指令的內容
+        const updateStreamelementsCommand = async (commandJson) => {
+            try {
+                log('更新目前指令的內容');
+                let response = await fetch(`https://api.streamelements.com/kappa/v2/bot/commands/${channelId}/${updateCommandId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Accept': 'application/json; charset=utf-8, application/json',
+                        'Authorization': `Bearer ${document.getElementById('JWTKey').value}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(commandJson),
+                });
+                console.log(response);
+                if (!response.ok) {
+                    throw new Error(`${response.status}:${response.statusText}`);
                 }
-            };
+                let data = await response.json();
+                log(data);
 
-            var currentGameName = '';
-            var isEnable = false;
+                return data;
+            } catch (error) {
+                console.error('Error:', error);
+                errorMsg = `無法更新目前指令的內容`;
 
-            document.getElementById('ImmediatelyUpdate').addEventListener('click', async (e) => {
+                throw error;
+            }
+        }
 
-                //將預設值寫入localStorage
-                localStorage.setItem(LOCALSTORAGE_JWTKEY, document.getElementById('JWTKey').value);
+        //完整流程
+        const mainProcess = async () => {
+            try {
+                log('完整流程開始');
 
+                hideAll();  //隱藏上次的成功與失敗訊息
+
+                //撈取steam遊戲狀態
+                await getSteamStatus();
+
+                //顯示在畫面上
+                document.getElementById('currentSteamGameName').innerHTML = steamGameName;
+
+                //自訂遊戲名稱優先，沒有遊戲名稱就不做下去
+                let currentGameName = document.getElementById('gameName').value || steamGameName;
+                if (!currentGameName)
+                    return;
+
+                let commandJson = await getStreamelementsCommand();
+                let commandReplyGameName = /『(.+)』/gm.exec(commandJson['reply'])[1];
+
+                //遊戲名稱一致，不用改
+                if (currentGameName === commandReplyGameName)
+                    return;
+
+                //修改遊戲名稱
+                commandJson['reply'] = commandJson['reply'].replace(/『(.+)』/gm, `『${currentGameName}』`);
+
+                //更新指令內容
+                await updateStreamelementsCommand(commandJson); //不知道為啥要更新兩次聊天室才能正常= =
+                let updatedCommandJson = await updateStreamelementsCommand(commandJson);
+
+                showSuccess(`更新成功<br/>${updatedCommandJson['reply']}`);
+            } catch (error) {
+                showError(`${errorMsg}<br/>給開發者的錯誤訊息內容${error}`);
+            }
+            finally {
+                log('完整流程結束');
+            }
+        };
+
+        var currentGameName = '';
+        var isEnable = false;
+
+        document.getElementById('ImmediatelyUpdate').addEventListener('click', async (e) => {
+
+            //將預設值寫入localStorage
+            localStorage.setItem(LOCALSTORAGE_JWTKEY, document.getElementById('JWTKey').value);
+
+            await mainProcess();
+        });
+
+        document.getElementById('FirstStartAutoUpdate').addEventListener('click', (e) => {
+
+            //將預設值寫入localStorage
+            localStorage.setItem(LOCALSTORAGE_JWTKEY, document.getElementById('JWTKey').value);
+
+            document.getElementById('FirstStartAutoUpdate').style.display = 'none';
+            document.getElementById('StartAutoUpdate').style.display = 'none';
+            document.getElementById('stopAutoUpdate').style.display = 'none';
+
+            document.getElementById('StartAutoUpdate').click();
+        });
+
+        document.getElementById('StartAutoUpdate').addEventListener('click', async (e) => {
+            document.getElementById('loading').style.display = '';
+
+            document.getElementById('StartAutoUpdate').style.display = 'none';
+
+            let autoUpdateDurationByMinute = 2;
+
+            //每2分鐘跑一次
+            const runMainProcess = async () => {
                 await mainProcess();
-            });
+                let now = new Date();
+                now.setMinutes(now.getMinutes() + autoUpdateDurationByMinute);
+                document.getElementById('nextUpdateStamp').innerHTML = `下次自動更新時間：${now.toLocaleString()}`;
+                mainInterval = setTimeout(runMainProcess, autoUpdateDurationByMinute * 60 * 1000);
+            };
+            await runMainProcess();
 
-            document.getElementById('FirstStartAutoUpdate').addEventListener('click', (e) => {
+            document.getElementById('FirstStartAutoUpdate').style.display = 'none';
+            document.getElementById('StartAutoUpdate').style.display = 'none';
+            document.getElementById('stopAutoUpdate').style.display = '';
 
-                //將預設值寫入localStorage
-                localStorage.setItem(LOCALSTORAGE_JWTKEY, document.getElementById('JWTKey').value);
+            document.getElementById('loading').style.display = 'none';
+        });
 
-                document.getElementById('FirstStartAutoUpdate').style.display = 'none';
-                document.getElementById('StartAutoUpdate').style.display = 'none';
-                document.getElementById('stopAutoUpdate').style.display = 'none';
+        document.getElementById('stopAutoUpdate').addEventListener('click', (e) => {
+            //停下來
+            clearTimeout(mainInterval);
 
-                document.getElementById('StartAutoUpdate').click();
-            });
+            document.getElementById('FirstStartAutoUpdate').style.display = 'none';
+            document.getElementById('StartAutoUpdate').style.display = '';
+            document.getElementById('stopAutoUpdate').style.display = 'none';
 
-            document.getElementById('StartAutoUpdate').addEventListener('click', async (e) => {
-                document.getElementById('loading').style.display = '';
-
-                document.getElementById('StartAutoUpdate').style.display = 'none';
-
-                let autoUpdateDurationByMinute = 2;
-
-                //每2分鐘跑一次
-                const runMainProcess = async () => {
-                    await mainProcess();
-                    let now = new Date();
-                    now.setMinutes(now.getMinutes() + autoUpdateDurationByMinute);
-                    document.getElementById('nextUpdateStamp').innerHTML = `下次自動更新時間：${now.toLocaleString()}`;
-                    mainInterval = setTimeout(runMainProcess, autoUpdateDurationByMinute * 60 * 1000);
-                };
-                await runMainProcess();
-
-                document.getElementById('FirstStartAutoUpdate').style.display = 'none';
-                document.getElementById('StartAutoUpdate').style.display = 'none';
-                document.getElementById('stopAutoUpdate').style.display = '';
-
-                document.getElementById('loading').style.display = 'none';
-            });
-
-            document.getElementById('stopAutoUpdate').addEventListener('click', (e) => {
-                //停下來
-                clearTimeout(mainInterval);
-
-                document.getElementById('FirstStartAutoUpdate').style.display = 'none';
-                document.getElementById('StartAutoUpdate').style.display = '';
-                document.getElementById('stopAutoUpdate').style.display = 'none';
-
-                document.getElementById('nextUpdateStamp').innerHTML = 'Loading...';
-                document.getElementById('loading').style.display = 'none';
-            });
+            document.getElementById('nextUpdateStamp').innerHTML = 'Loading...';
+            document.getElementById('loading').style.display = 'none';
+        });
     </script>
 </body>
 
