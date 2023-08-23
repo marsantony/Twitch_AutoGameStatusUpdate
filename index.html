@@ -143,8 +143,8 @@
             document.getElementById('successAlert').style.display = '';
         };
 
-        const channelId = '5d29b4d31deb300a0518a503';   //5929d1f610ee005fd32bc0ea 5d29b4d31deb300a0518a503
-        const updateCommandId = '64c5fa97108a4cfbb879b392'; //64e4a9ca71f1f2e28f92afba 64c5fa97108a4cfbb879b392
+        const channelId = '5929d1f610ee005fd32bc0ea';   //5929d1f610ee005fd32bc0ea 5d29b4d31deb300a0518a503
+        const updateCommandId = '64e4a9ca71f1f2e28f92afba'; //64e4a9ca71f1f2e28f92afba 64c5fa97108a4cfbb879b392
 
         var errorMsg = '';
         var steamGameName = '';
@@ -295,9 +295,9 @@
 
             document.getElementById('StartAutoUpdate').style.display = 'none';
 
-            let autoUpdateDurationByMinute = 2;
+            let autoUpdateDurationByMinute = 5;
 
-            //每2分鐘跑一次
+            //每{autoUpdateDurationByMinute}分鐘跑一次
             const runMainProcess = async () => {
                 await mainProcess();
                 let now = new Date();
