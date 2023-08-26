@@ -255,7 +255,8 @@
                 commandJson['reply'] = commandJson['reply'].replace(/『(.+)』/gm, `『${currentGameName}』`);
 
                 //更新指令內容
-                await updateStreamelementsCommand(commandJson); //不知道為啥要更新兩次聊天室才能正常= =
+                //await updateStreamelementsCommand(commandJson); //不知道為啥要更新兩次聊天室才能正常= =
+                //更新兩次可能有問題，更新一次吧
                 let updatedCommandJson = await updateStreamelementsCommand(commandJson);
 
                 showSuccess(`更新成功<br/>${updatedCommandJson['reply']}`);
