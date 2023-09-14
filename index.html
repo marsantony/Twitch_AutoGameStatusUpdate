@@ -93,6 +93,12 @@
             <label for="gameName">自訂遊戲名稱</label>
             <input type="text" id="gameName" class="form-control" />
         </div>
+
+        <div class="form-group">
+            <label for="commandReplyTemplate">!遊戲指令Template(遊戲名稱會帶入{game})</label>
+            <input type="text" id="commandReplyTemplate" class="form-control" />
+        </div>
+
         <br />
         <div class="form-group" style="text-align:right;">
             <input type="button" id="ImmediatelyUpdate" class="btn btn-primary" value="立即更新" />
@@ -109,6 +115,7 @@
             <label for="currentSteamGameName">Steam抓取的遊戲名稱:</label>
             <span id="currentSteamGameName"></span>
         </div>
+
         <div class="form-group">
             <label for="log">執行的所有LOG紀錄(重新整理就會不見)</label>
             <textarea id="log" class="form-control" rows="10" style="resize: none;" readonly></textarea>
@@ -148,9 +155,11 @@
 
     <script>
         const LOCALSTORAGE_JWTKEY = 'Twitch_AutoGameStatusUpdate_JWTKey';
+        const LOCALSTORAGE_COMMANDREPLYTEMPLATE = 'Twitch_AutoGameStatusUpdate_CommandReplyTemplate';
 
         //將預設值帶入
         document.getElementById('JWTKey').value = localStorage.getItem(LOCALSTORAGE_JWTKEY) || '';
+        document.getElementById('commandReplyTemplate').value = localStorage.getItem(LOCALSTORAGE_COMMANDREPLYTEMPLATE) || '';
 
         const log = (message) => {
             var currentStamp = new Date().toLocaleString();
@@ -282,18 +291,18 @@
                     return;
 
                 let commandJson = await getStreamelementsCommand();
-                let commandReplyGameName = /『(.+)』/gm.exec(commandJson['reply'])[1];
 
+                let templateFullReply = document.getElementById('commandReplyTemplate').value.replace(/{game}/, currentGameName);
+
+                debugger;
                 //遊戲名稱一致，不用改
-                if (currentGameName === commandReplyGameName)
+                if (commandJson['reply'] === templateFullReply)
                     return;
 
                 //修改遊戲名稱
-                commandJson['reply'] = commandJson['reply'].replace(/『(.+)』/gm, `『${currentGameName}』`);
+                commandJson['reply'] = templateFullReply;
 
                 //更新指令內容
-                //await updateStreamelementsCommand(commandJson); //不知道為啥要更新兩次聊天室才能正常= =
-                //更新兩次可能有問題，更新一次吧
                 let updatedCommandJson = await updateStreamelementsCommand(commandJson);
 
                 showSuccess(`更新成功<br/>${updatedCommandJson['reply']}`);
@@ -312,6 +321,7 @@
 
             //將預設值寫入localStorage
             localStorage.setItem(LOCALSTORAGE_JWTKEY, document.getElementById('JWTKey').value);
+            localStorage.setItem(LOCALSTORAGE_COMMANDREPLYTEMPLATE, document.getElementById('commandReplyTemplate').value);
 
             await mainProcess();
         });
@@ -320,6 +330,7 @@
 
             //將預設值寫入localStorage
             localStorage.setItem(LOCALSTORAGE_JWTKEY, document.getElementById('JWTKey').value);
+            localStorage.setItem(LOCALSTORAGE_COMMANDREPLYTEMPLATE, document.getElementById('commandReplyTemplate').value);
 
             document.getElementById('FirstStartAutoUpdate').style.display = 'none';
             document.getElementById('StartAutoUpdate').style.display = 'none';
