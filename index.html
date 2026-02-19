@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 
 <head>
@@ -47,11 +47,25 @@
         </div>
 
         <div class="form-group">
-            <label for="JWTKey">StreamElements JWT金鑰</label>
+            <label for="channel">頻道</label>
+            <select id="channel" class="form-control">
+                <option value="shuteye_orange"
+                        data-steamid="76561198003344359"
+                        data-se-channel="5929d1f610ee005fd32bc0ea"
+                        data-se-command="64e9fdca52bb6e45114f9753">蝦愛橘子</option>
+                <option value="marsantonymars"
+                        data-steamid="76561197999639100"
+                        data-se-channel="5d29b4d31deb300a0518a503"
+                        data-se-command="64c5fa97108a4cfbb879b392">姬柊雪菜我老婆</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="JWTKey">StreamElements JWT金鑰（請使用自己帳號的金鑰）</label>
             <i class="bi bi-info-circle" id="showJWTPlaceImage"><img src="./images/image.png" width="700" /></i>
             <a class="link-info" href="https://streamelements.com/dashboard/account/channels" target="_blank">StreamElements取得JWT金鑰連結</a>
+            <small class="text-muted d-block">若要幫別人操作，請先請對方將你加為 StreamElements Bot Moderator，再填入你自己的 JWT</small>
             <input type="password" id="JWTKey" class="form-control col-1" />
-
         </div>
 
         <div class="form-group">
@@ -66,13 +80,12 @@
 
         <br />
         <div class="form-group" style="text-align:right;">
-            <input type="button" id="ImmediatelyUpdate" class="btn btn-primary" value="立即更新" />
-            <input type="button" id="FirstStartAutoUpdate" class="btn btn-primary" value="開始自動更新" />
+            <input type="button" id="immediatelyUpdate" class="btn btn-primary" value="立即更新" />
+            <input type="button" id="startAutoUpdate" class="btn btn-primary" value="開始自動更新" />
             <button class="btn btn-primary" type="button" id="loading" disabled style="display:none;">
                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                 <span id="nextUpdateStamp">Loading...</span>
             </button>
-            <input type="button" id="StartAutoUpdate" class="btn btn-primary" value="開始自動更新" style="display:none;" />
             <input type="button" id="stopAutoUpdate" class="btn btn-danger" value="停止自動更新" style="display:none;" />
         </div>
 
@@ -100,228 +113,13 @@
 
     <!-- Option 1: Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ" crossorigin="anonymous"></script>
-    <script src="https://github.com/tmijs/tmi.js/releases/download/v1.8.5/tmi.min.js"></script>
 
     <script src="https://marsantony.github.io/shared/shared.js"></script>
+    <script src="./src/utils.js"></script>
+    <script src="./src/autoGameUpdateClass.js"></script>
     <script>
-        const LOCALSTORAGE_JWTKEY = 'Twitch_AutoGameStatusUpdate_JWTKey';
-        const LOCALSTORAGE_COMMANDREPLYTEMPLATE = 'Twitch_AutoGameStatusUpdate_CommandReplyTemplate';
-
-        //將預設值帶入
-        document.getElementById('JWTKey').value = localStorage.getItem(LOCALSTORAGE_JWTKEY) || '';
-        document.getElementById('commandReplyTemplate').value = localStorage.getItem(LOCALSTORAGE_COMMANDREPLYTEMPLATE) || '【🎮遊戲名稱(𝔤𝔞𝔪𝔢 𝔱𝔦𝔱𝔩𝔢)】 ➤  shuteyDance1  ✍ 【{game}】  shuteyDance1  🎦補Vod到Yt goo.gl/6QPHkj 🎥個人Yt reurl.cc/mnaQej 🗨️一起玩加DC免訂閱 discord.gg/tMPZR4R';
-
-        const log = (message) => {
-            var currentStamp = new Date().toLocaleString();
-            console.log(currentStamp);
-            console.log(message);
-            document.getElementById('log').value = `${currentStamp}:${JSON.stringify(message)}\r\n${document.getElementById('log').value}`;
-        };
-
-        const hideAll = () => {
-            document.getElementById('successAlert').style.display = 'none';
-            document.getElementById('errorAlert').style.display = 'none';
-        };
-
-        const showError = (message) => {
-            document.getElementById('successAlert').innerHTML = '';
-            document.getElementById('successAlert').style.display = 'none';
-
-            document.getElementById('errorAlert').innerHTML = message;
-            document.getElementById('errorAlert').style.display = '';
-        };
-
-        const showSuccess = (message) => {
-            document.getElementById('errorAlert').innerHTML = '';
-            document.getElementById('errorAlert').style.display = 'none';
-
-            document.getElementById('successAlert').innerHTML = message;
-            document.getElementById('successAlert').style.display = '';
-        };
-
-        const channelId = '5929d1f610ee005fd32bc0ea';   //5929d1f610ee005fd32bc0ea 5d29b4d31deb300a0518a503
-        const updateCommandId = '64e9fdca52bb6e45114f9753'; //64e9fdca52bb6e45114f9753 64c5fa97108a4cfbb879b392
-
-        var errorMsg = '';
-        var steamGameName = '';
-        var mainInterval;
-
-        //取得steam狀態
-        //azure function 發幾次就要0.01元，換Cloud Function
-        const getSteamStatus = async () => {
-
-            try {
-                log('取得steam狀態');
-                let response = await fetch(`https://asia-east1-steamwebapi-394409.cloudfunctions.net/GetOrangeSteamStatus`);
-                console.log(response);
-                if (!response.ok) {
-                    throw new Error(`${response.status}:${response.statusText}`);
-                }
-                let data = await response.json();
-                log(data);
-                steamGameName = data['GameName'];
-            } catch (error) {
-                console.error('Error:', error);
-                errorMsg = `無法取得steam狀態`;
-
-                throw error;
-            }
-        };
-
-        //取得目前指令的內容
-        const getStreamelementsCommand = async () => {
-            try {
-                log('取得目前指令的內容');
-                let response = await fetch(`https://api.streamelements.com/kappa/v2/bot/commands/${channelId}/${updateCommandId}`, {
-                    headers: {
-                        'Accept': 'application/json; charset=utf-8, application/json',
-                        'Authorization': `Bearer ${document.getElementById('JWTKey').value}`
-                    }
-                });
-                console.log(response);
-                if (!response.ok) {
-                    throw new Error(`${response.status}:${response.statusText}`);
-                }
-                let data = await response.json();
-                log(data);
-                return data;
-            } catch (error) {
-                console.error('Error:', error);
-                errorMsg = `無法取得目前指令的內容`;
-
-                throw error;
-            }
-        };
-
-        //更新目前指令的內容
-        const updateStreamelementsCommand = async (commandJson) => {
-            try {
-                log('更新目前指令的內容');
-                let response = await fetch(`https://api.streamelements.com/kappa/v2/bot/commands/${channelId}/${updateCommandId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Accept': 'application/json; charset=utf-8, application/json',
-                        'Authorization': `Bearer ${document.getElementById('JWTKey').value}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(commandJson),
-                });
-                console.log(response);
-                if (!response.ok) {
-                    throw new Error(`${response.status}:${response.statusText}`);
-                }
-                let data = await response.json();
-                log(data);
-
-                return data;
-            } catch (error) {
-                console.error('Error:', error);
-                errorMsg = `無法更新目前指令的內容`;
-
-                throw error;
-            }
-        }
-
-        //完整流程
-        const mainProcess = async () => {
-            try {
-                log('完整流程開始');
-
-                hideAll();  //隱藏上次的成功與失敗訊息
-
-                //撈取steam遊戲狀態
-                await getSteamStatus();
-
-                //顯示在畫面上
-                document.getElementById('currentSteamGameName').innerHTML = steamGameName;
-
-                //自訂遊戲名稱優先，沒有遊戲名稱就不做下去
-                let currentGameName = document.getElementById('gameName').value || steamGameName;
-                if (!currentGameName)
-                    return;
-
-                let commandJson = await getStreamelementsCommand();
-
-                let templateFullReply = document.getElementById('commandReplyTemplate').value.replace(/{game}/, currentGameName);
-
-                debugger;
-                //遊戲名稱一致，不用改
-                if (commandJson['reply'] === templateFullReply)
-                    return;
-
-                //修改遊戲名稱
-                commandJson['reply'] = templateFullReply;
-
-                //更新指令內容
-                let updatedCommandJson = await updateStreamelementsCommand(commandJson);
-
-                showSuccess(`更新成功<br/>${updatedCommandJson['reply']}`);
-            } catch (error) {
-                showError(`${errorMsg}<br/>給開發者的錯誤訊息內容${error}`);
-            }
-            finally {
-                log('完整流程結束');
-            }
-        };
-
-        var currentGameName = '';
-        var isEnable = false;
-
-        document.getElementById('ImmediatelyUpdate').addEventListener('click', async (e) => {
-
-            //將預設值寫入localStorage
-            localStorage.setItem(LOCALSTORAGE_JWTKEY, document.getElementById('JWTKey').value);
-            localStorage.setItem(LOCALSTORAGE_COMMANDREPLYTEMPLATE, document.getElementById('commandReplyTemplate').value);
-
-            await mainProcess();
-        });
-
-        document.getElementById('FirstStartAutoUpdate').addEventListener('click', (e) => {
-
-            //將預設值寫入localStorage
-            localStorage.setItem(LOCALSTORAGE_JWTKEY, document.getElementById('JWTKey').value);
-            localStorage.setItem(LOCALSTORAGE_COMMANDREPLYTEMPLATE, document.getElementById('commandReplyTemplate').value);
-
-            document.getElementById('FirstStartAutoUpdate').style.display = 'none';
-            document.getElementById('StartAutoUpdate').style.display = 'none';
-            document.getElementById('stopAutoUpdate').style.display = 'none';
-
-            document.getElementById('StartAutoUpdate').click();
-        });
-
-        document.getElementById('StartAutoUpdate').addEventListener('click', async (e) => {
-            document.getElementById('loading').style.display = '';
-
-            document.getElementById('StartAutoUpdate').style.display = 'none';
-
-            let autoUpdateDurationByMinute = 5;
-
-            //每{autoUpdateDurationByMinute}分鐘跑一次
-            const runMainProcess = async () => {
-                await mainProcess();
-                let now = new Date();
-                now.setMinutes(now.getMinutes() + autoUpdateDurationByMinute);
-                document.getElementById('nextUpdateStamp').innerHTML = `下次自動更新時間：${now.toLocaleString()}`;
-                mainInterval = setTimeout(runMainProcess, autoUpdateDurationByMinute * 60 * 1000);
-            };
-            await runMainProcess();
-
-            document.getElementById('FirstStartAutoUpdate').style.display = 'none';
-            document.getElementById('StartAutoUpdate').style.display = 'none';
-            document.getElementById('stopAutoUpdate').style.display = '';
-        });
-
-        document.getElementById('stopAutoUpdate').addEventListener('click', (e) => {
-            //停下來
-            clearTimeout(mainInterval);
-
-            document.getElementById('FirstStartAutoUpdate').style.display = 'none';
-            document.getElementById('StartAutoUpdate').style.display = '';
-            document.getElementById('stopAutoUpdate').style.display = 'none';
-
-            document.getElementById('nextUpdateStamp').innerHTML = 'Loading...';
-            document.getElementById('loading').style.display = 'none';
-        });
+        var updater = new AutoGameUpdate();
+        updater.init();
     </script>
 </body>
 
