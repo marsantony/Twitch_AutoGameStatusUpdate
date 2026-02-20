@@ -91,17 +91,20 @@ class AutoGameUpdate {
             hideAllAlerts();
             this.#readChannelConfig();
 
-            errorMsg = '無法取得steam狀態';
-            var steamGameName = await this.getSteamStatus();
+            errorMsg = '無法取得 Steam 狀態或目前指令內容';
+            var results = await Promise.all([
+                this.getSteamStatus(),
+                this.getStreamelementsCommand()
+            ]);
+            var steamGameName = results[0];
+            var commandJson = results[1];
+
             document.getElementById('currentSteamGameName').textContent = steamGameName;
+            var currentCommandReplyEl = document.getElementById('currentCommandReply');
+            if (currentCommandReplyEl) currentCommandReplyEl.textContent = commandJson['reply'] || '';
 
             var currentGameName = document.getElementById('gameName').value || steamGameName;
             if (!currentGameName) return;
-
-            errorMsg = '無法取得目前指令的內容';
-            var commandJson = await this.getStreamelementsCommand();
-            var currentCommandReplyEl = document.getElementById('currentCommandReply');
-            if (currentCommandReplyEl) currentCommandReplyEl.textContent = commandJson['reply'] || '';
 
             var template = document.getElementById('commandReplyTemplate').value;
             var templateFullReply = template.replace(/{game}/, currentGameName);

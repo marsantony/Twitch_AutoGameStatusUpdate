@@ -162,6 +162,7 @@ describe('AutoGameUpdate', () => {
 
         it('Steam 沒抓到遊戲時 UI 顯示空，但指令回覆不變', async () => {
             var callCount = 0;
+            var currentReply = '舊內容';
             var mockFetch = vi.fn((url, opts) => {
                 if (typeof url === 'string' && url.includes('GetSteamStatus')) {
                     callCount++;
@@ -173,6 +174,7 @@ describe('AutoGameUpdate', () => {
                 }
                 if (opts && opts.method === 'PUT') {
                     var body = JSON.parse(opts.body);
+                    currentReply = body.reply;
                     return Promise.resolve({
                         ok: true,
                         json: () => Promise.resolve({ reply: body.reply }),
@@ -180,7 +182,7 @@ describe('AutoGameUpdate', () => {
                 }
                 return Promise.resolve({
                     ok: true,
-                    json: () => Promise.resolve({ reply: '舊內容' }),
+                    json: () => Promise.resolve({ reply: currentReply }),
                 });
             });
 
@@ -196,7 +198,7 @@ describe('AutoGameUpdate', () => {
             expect(document.getElementById('currentCommandReply').textContent).toBe('目前遊戲：Elden Ring');
         });
 
-        it('Steam 沒在玩遊戲且沒自訂名稱時不呼叫 StreamElements', async () => {
+        it('Steam 沒在玩遊戲且沒自訂名稱時不呼叫 PUT', async () => {
             var mockFetch = vi.fn((url) => {
                 if (typeof url === 'string' && url.includes('GetSteamStatus')) {
                     return Promise.resolve({
@@ -204,14 +206,20 @@ describe('AutoGameUpdate', () => {
                         json: () => Promise.resolve({ GameName: '' }),
                     });
                 }
-                return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ reply: '目前遊戲：之前的遊戲' }),
+                });
             });
 
             var instance = createInstance(mockFetch);
             instance.init();
             await instance.mainProcess();
 
-            expect(mockFetch).toHaveBeenCalledTimes(1);
+            expect(mockFetch).toHaveBeenCalledTimes(2);
+            var putCalls = mockFetch.mock.calls.filter(function(c) { return c[1] && c[1].method === 'PUT'; });
+            expect(putCalls).toHaveLength(0);
+            expect(document.getElementById('currentCommandReply').textContent).toBe('目前遊戲：之前的遊戲');
         });
 
         it('自訂遊戲名稱優先於 Steam', async () => {
@@ -275,7 +283,7 @@ describe('AutoGameUpdate', () => {
             await instance.mainProcess();
 
             expect(document.getElementById('errorAlert').style.display).not.toBe('none');
-            expect(document.getElementById('errorAlert').innerHTML).toContain('無法取得steam狀態');
+            expect(document.getElementById('errorAlert').innerHTML).toContain('無法取得');
         });
     });
 
