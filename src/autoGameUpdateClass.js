@@ -91,32 +91,29 @@ class AutoGameUpdate {
             hideAllAlerts();
             this.#readChannelConfig();
 
-            errorMsg = '無法取得 Steam 狀態或目前指令內容';
-            var results = await Promise.all([
-                this.getSteamStatus(),
-                this.getStreamelementsCommand()
-            ]);
-            var steamGameName = results[0];
-            var commandJson = results[1];
-
+            errorMsg = '無法取得steam狀態';
+            var steamGameName = await this.getSteamStatus();
             document.getElementById('currentSteamGameName').textContent = steamGameName;
-            var currentCommandReplyEl = document.getElementById('currentCommandReply');
-            if (currentCommandReplyEl) currentCommandReplyEl.textContent = commandJson['reply'] || '';
 
             var currentGameName = document.getElementById('gameName').value || steamGameName;
-            if (!currentGameName) return;
 
-            var template = document.getElementById('commandReplyTemplate').value;
-            var templateFullReply = template.replace(/{game}/, currentGameName);
+            errorMsg = '無法取得目前指令的內容';
+            var commandJson = await this.getStreamelementsCommand();
 
-            if (commandJson['reply'] === templateFullReply) return;
+            if (currentGameName) {
+                var template = document.getElementById('commandReplyTemplate').value;
+                var templateFullReply = template.replace(/{game}/, currentGameName);
 
-            commandJson['reply'] = templateFullReply;
+                if (commandJson['reply'] !== templateFullReply) {
+                    commandJson['reply'] = templateFullReply;
+                    errorMsg = '無法更新目前指令的內容';
+                    commandJson = await this.updateStreamelementsCommand(commandJson);
+                    showSuccess('更新成功<br/>' + commandJson['reply']);
+                }
+            }
 
-            errorMsg = '無法更新目前指令的內容';
-            var updatedCommandJson = await this.updateStreamelementsCommand(commandJson);
-            if (currentCommandReplyEl) currentCommandReplyEl.textContent = updatedCommandJson['reply'] || '';
-            showSuccess('更新成功<br/>' + updatedCommandJson['reply']);
+            var currentCommandReplyEl = document.getElementById('currentCommandReply');
+            if (currentCommandReplyEl) currentCommandReplyEl.textContent = commandJson['reply'] || '';
         } catch (error) {
             showError(errorMsg + '<br/>給開發者的錯誤訊息內容' + error);
         } finally {
