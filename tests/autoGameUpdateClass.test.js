@@ -41,14 +41,15 @@ function createInstance(mockFetch) {
 beforeEach(() => {
     setupDOM();
     localStorage.clear();
+    sessionStorage.clear();
     // 預設 template，讓 init() 載入時有值
     localStorage.setItem(LOCALSTORAGE_COMMANDREPLYTEMPLATE, '目前遊戲：{game}');
 });
 
 describe('AutoGameUpdate', () => {
     describe('init', () => {
-        it('從 localStorage 載入設定', () => {
-            localStorage.setItem(LOCALSTORAGE_JWTKEY, 'saved-jwt');
+        it('從 storage 載入設定（JWT 用 sessionStorage，template 用 localStorage）', () => {
+            sessionStorage.setItem(LOCALSTORAGE_JWTKEY, 'saved-jwt');
             localStorage.setItem(LOCALSTORAGE_COMMANDREPLYTEMPLATE, '模板：{game}');
 
             var instance = createInstance(vi.fn());
@@ -58,7 +59,7 @@ describe('AutoGameUpdate', () => {
             expect(document.getElementById('commandReplyTemplate').value).toBe('模板：{game}');
         });
 
-        it('localStorage 沒值時 JWTKey 設為空字串', () => {
+        it('sessionStorage 沒值時 JWTKey 設為空字串', () => {
             var instance = createInstance(vi.fn());
             instance.init();
 
@@ -155,6 +156,40 @@ describe('AutoGameUpdate', () => {
             expect(document.getElementById('currentSteamGameName').textContent).toBe('Elden Ring');
             expect(putBody.reply).toBe('目前遊戲：Elden Ring');
             expect(document.getElementById('successAlert').style.display).not.toBe('none');
+        });
+
+        it('Steam 沒抓到遊戲時 UI 保留上一次的名稱', async () => {
+            var callCount = 0;
+            var mockFetch = vi.fn((url, opts) => {
+                if (typeof url === 'string' && url.includes('GetSteamStatus')) {
+                    callCount++;
+                    var gameName = callCount === 1 ? 'Elden Ring' : '';
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ GameName: gameName }),
+                    });
+                }
+                if (opts && opts.method === 'PUT') {
+                    var body = JSON.parse(opts.body);
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ reply: body.reply }),
+                    });
+                }
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ reply: '舊內容' }),
+                });
+            });
+
+            var instance = createInstance(mockFetch);
+            instance.init();
+
+            await instance.mainProcess();
+            expect(document.getElementById('currentSteamGameName').textContent).toBe('Elden Ring');
+
+            await instance.mainProcess();
+            expect(document.getElementById('currentSteamGameName').textContent).toBe('Elden Ring');
         });
 
         it('Steam 沒在玩遊戲且沒自訂名稱時不呼叫 StreamElements', async () => {
@@ -271,8 +306,8 @@ describe('AutoGameUpdate', () => {
         });
     });
 
-    describe('localStorage 儲存', () => {
-        it('點擊立即更新時儲存設定', async () => {
+    describe('設定儲存', () => {
+        it('點擊立即更新時 JWT 存到 sessionStorage', async () => {
             var mockFetch = vi.fn(() =>
                 Promise.resolve({
                     ok: true,
@@ -286,8 +321,9 @@ describe('AutoGameUpdate', () => {
             document.getElementById('immediatelyUpdate').click();
 
             await vi.waitFor(() => {
-                expect(localStorage.getItem(LOCALSTORAGE_JWTKEY)).toBe('my-jwt-key');
+                expect(sessionStorage.getItem(LOCALSTORAGE_JWTKEY)).toBe('my-jwt-key');
             });
+            expect(localStorage.getItem(LOCALSTORAGE_JWTKEY)).toBeNull();
         });
     });
 });

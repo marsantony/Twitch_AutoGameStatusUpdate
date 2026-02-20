@@ -93,7 +93,9 @@ class AutoGameUpdate {
 
             errorMsg = '無法取得steam狀態';
             var steamGameName = await this.getSteamStatus();
-            document.getElementById('currentSteamGameName').textContent = steamGameName;
+            if (steamGameName) {
+                document.getElementById('currentSteamGameName').textContent = steamGameName;
+            }
 
             var currentGameName = document.getElementById('gameName').value || steamGameName;
             if (!currentGameName) return;
@@ -135,9 +137,9 @@ class AutoGameUpdate {
             self.stop();
         });
 
-        // 載入 localStorage 設定
+        // 載入設定（JWT 用 sessionStorage，其餘用 localStorage）
         document.getElementById('JWTKey').value =
-            localStorage.getItem(LOCALSTORAGE_JWTKEY) || '';
+            sessionStorage.getItem(LOCALSTORAGE_JWTKEY) || '';
         document.getElementById('commandReplyTemplate').value =
             localStorage.getItem(LOCALSTORAGE_COMMANDREPLYTEMPLATE) || '';
     }
@@ -182,7 +184,7 @@ class AutoGameUpdate {
     }
 
     #saveSettings() {
-        localStorage.setItem(LOCALSTORAGE_JWTKEY, document.getElementById('JWTKey').value);
+        sessionStorage.setItem(LOCALSTORAGE_JWTKEY, document.getElementById('JWTKey').value);
         localStorage.setItem(LOCALSTORAGE_COMMANDREPLYTEMPLATE, document.getElementById('commandReplyTemplate').value);
     }
 }
