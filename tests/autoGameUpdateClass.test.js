@@ -24,6 +24,7 @@ function setupDOM() {
         <input type="text" id="gameName" value="" />
         <input type="text" id="commandReplyTemplate" value="目前遊戲：{game}" />
         <span id="currentSteamGameName"></span>
+        <span id="currentCommandReply"></span>
         <textarea id="log"></textarea>
         <div id="successAlert" style="display:none;"></div>
         <div id="errorAlert" style="display:none;"></div>
@@ -155,10 +156,11 @@ describe('AutoGameUpdate', () => {
 
             expect(document.getElementById('currentSteamGameName').textContent).toBe('Elden Ring');
             expect(putBody.reply).toBe('目前遊戲：Elden Ring');
+            expect(document.getElementById('currentCommandReply').textContent).toBe('目前遊戲：Elden Ring');
             expect(document.getElementById('successAlert').style.display).not.toBe('none');
         });
 
-        it('Steam 沒抓到遊戲時 UI 保留上一次的名稱', async () => {
+        it('Steam 沒抓到遊戲時 UI 顯示空，但指令回覆不變', async () => {
             var callCount = 0;
             var mockFetch = vi.fn((url, opts) => {
                 if (typeof url === 'string' && url.includes('GetSteamStatus')) {
@@ -187,9 +189,11 @@ describe('AutoGameUpdate', () => {
 
             await instance.mainProcess();
             expect(document.getElementById('currentSteamGameName').textContent).toBe('Elden Ring');
+            expect(document.getElementById('currentCommandReply').textContent).toBe('目前遊戲：Elden Ring');
 
             await instance.mainProcess();
-            expect(document.getElementById('currentSteamGameName').textContent).toBe('Elden Ring');
+            expect(document.getElementById('currentSteamGameName').textContent).toBe('');
+            expect(document.getElementById('currentCommandReply').textContent).toBe('目前遊戲：Elden Ring');
         });
 
         it('Steam 沒在玩遊戲且沒自訂名稱時不呼叫 StreamElements', async () => {

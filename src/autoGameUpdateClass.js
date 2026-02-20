@@ -93,15 +93,15 @@ class AutoGameUpdate {
 
             errorMsg = '無法取得steam狀態';
             var steamGameName = await this.getSteamStatus();
-            if (steamGameName) {
-                document.getElementById('currentSteamGameName').textContent = steamGameName;
-            }
+            document.getElementById('currentSteamGameName').textContent = steamGameName;
 
             var currentGameName = document.getElementById('gameName').value || steamGameName;
             if (!currentGameName) return;
 
             errorMsg = '無法取得目前指令的內容';
             var commandJson = await this.getStreamelementsCommand();
+            var currentCommandReplyEl = document.getElementById('currentCommandReply');
+            if (currentCommandReplyEl) currentCommandReplyEl.textContent = commandJson['reply'] || '';
 
             var template = document.getElementById('commandReplyTemplate').value;
             var templateFullReply = template.replace(/{game}/, currentGameName);
@@ -112,6 +112,7 @@ class AutoGameUpdate {
 
             errorMsg = '無法更新目前指令的內容';
             var updatedCommandJson = await this.updateStreamelementsCommand(commandJson);
+            if (currentCommandReplyEl) currentCommandReplyEl.textContent = updatedCommandJson['reply'] || '';
             showSuccess('更新成功<br/>' + updatedCommandJson['reply']);
         } catch (error) {
             showError(errorMsg + '<br/>給開發者的錯誤訊息內容' + error);
