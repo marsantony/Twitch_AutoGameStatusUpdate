@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AutoGameUpdate, LOCALSTORAGE_JWTKEY, LOCALSTORAGE_COMMANDREPLYTEMPLATE } from '../src/autoGameUpdateClass.js';
+import { AutoGameUpdate, LOCALSTORAGE_JWTKEY, LOCALSTORAGE_COMMANDREPLYTEMPLATE,
+    LOCALSTORAGE_CHANNEL, LOCALSTORAGE_CUSTOM_STEAMID,
+    LOCALSTORAGE_CUSTOM_SE_CHANNEL, LOCALSTORAGE_CUSTOM_SE_COMMAND } from '../src/autoGameUpdateClass.js';
 import * as utils from '../src/utils.js';
 
 // 掛載全域函數（class 用 /* global */ 引用）
@@ -19,7 +21,13 @@ function setupDOM() {
                     data-steamid="76561197999639100"
                     data-se-channel="ch-mars"
                     data-se-command="cmd-mars">姬柊雪菜我老婆</option>
+            <option value="__custom__">自訂...</option>
         </select>
+        <div id="customChannelFields" style="display:none;">
+            <input type="text" id="customSteamId" />
+            <input type="text" id="customSeChannel" />
+            <input type="text" id="customSeCommand" />
+        </div>
         <input type="password" id="JWTKey" value="test-jwt" />
         <input type="text" id="gameName" value="" />
         <input type="text" id="commandReplyTemplate" value="目前遊戲：{game}" />
@@ -336,6 +344,96 @@ describe('AutoGameUpdate', () => {
                 expect(sessionStorage.getItem(LOCALSTORAGE_JWTKEY)).toBe('my-jwt-key');
             });
             expect(localStorage.getItem(LOCALSTORAGE_JWTKEY)).toBeNull();
+        });
+
+        it('點擊立即更新時頻道選擇存到 localStorage', async () => {
+            var mockFetch = vi.fn(() =>
+                Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ GameName: '' }),
+                })
+            );
+            var instance = createInstance(mockFetch);
+            instance.init();
+
+            document.getElementById('channel').value = 'marsantonymars';
+            document.getElementById('immediatelyUpdate').click();
+
+            await vi.waitFor(() => {
+                expect(localStorage.getItem(LOCALSTORAGE_CHANNEL)).toBe('marsantonymars');
+            });
+        });
+    });
+
+    describe('自訂頻道', () => {
+        it('選擇自訂時顯示自訂欄位', () => {
+            var instance = createInstance(vi.fn());
+            instance.init();
+
+            var channelEl = document.getElementById('channel');
+            channelEl.value = '__custom__';
+            channelEl.dispatchEvent(new Event('change'));
+
+            expect(document.getElementById('customChannelFields').style.display).not.toBe('none');
+        });
+
+        it('切回預設頻道時隱藏自訂欄位', () => {
+            var instance = createInstance(vi.fn());
+            instance.init();
+
+            var channelEl = document.getElementById('channel');
+            channelEl.value = '__custom__';
+            channelEl.dispatchEvent(new Event('change'));
+            channelEl.value = 'shuteye_orange';
+            channelEl.dispatchEvent(new Event('change'));
+
+            expect(document.getElementById('customChannelFields').style.display).toBe('none');
+        });
+
+        it('選擇自訂時使用自訂欄位的值', async () => {
+            var mockFetch = vi.fn(() =>
+                Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ GameName: '' }),
+                })
+            );
+            var instance = createInstance(mockFetch);
+            instance.init();
+
+            document.getElementById('channel').value = '__custom__';
+            document.getElementById('customSteamId').value = '11111111111111111';
+            document.getElementById('customSeChannel').value = 'custom-ch';
+            document.getElementById('customSeCommand').value = 'custom-cmd';
+            await instance.mainProcess();
+
+            expect(mockFetch.mock.calls[0][0]).toContain('steamid=11111111111111111');
+            var seCall = mockFetch.mock.calls.find(function (c) { return c[0].includes('streamelements'); });
+            expect(seCall[0]).toContain('custom-ch');
+            expect(seCall[0]).toContain('custom-cmd');
+        });
+
+        it('init 時還原已儲存的頻道選擇', () => {
+            localStorage.setItem(LOCALSTORAGE_CHANNEL, 'marsantonymars');
+            var instance = createInstance(vi.fn());
+            instance.init();
+
+            expect(document.getElementById('channel').value).toBe('marsantonymars');
+        });
+
+        it('init 時還原自訂頻道並顯示自訂欄位', () => {
+            localStorage.setItem(LOCALSTORAGE_CHANNEL, '__custom__');
+            localStorage.setItem(LOCALSTORAGE_CUSTOM_STEAMID, '99999999999999999');
+            localStorage.setItem(LOCALSTORAGE_CUSTOM_SE_CHANNEL, 'saved-ch');
+            localStorage.setItem(LOCALSTORAGE_CUSTOM_SE_COMMAND, 'saved-cmd');
+
+            var instance = createInstance(vi.fn());
+            instance.init();
+
+            expect(document.getElementById('channel').value).toBe('__custom__');
+            expect(document.getElementById('customSteamId').value).toBe('99999999999999999');
+            expect(document.getElementById('customSeChannel').value).toBe('saved-ch');
+            expect(document.getElementById('customSeCommand').value).toBe('saved-cmd');
+            expect(document.getElementById('customChannelFields').style.display).not.toBe('none');
         });
     });
 });

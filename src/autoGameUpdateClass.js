@@ -5,6 +5,10 @@ const SE_API_BASE = 'https://api.streamelements.com/kappa/v2/bot/commands';
 
 const LOCALSTORAGE_JWTKEY = 'Twitch_AutoGameStatusUpdate_JWTKey';
 const LOCALSTORAGE_COMMANDREPLYTEMPLATE = 'Twitch_AutoGameStatusUpdate_CommandReplyTemplate';
+const LOCALSTORAGE_CHANNEL = 'Twitch_AutoGameStatusUpdate_Channel';
+const LOCALSTORAGE_CUSTOM_STEAMID = 'Twitch_AutoGameStatusUpdate_CustomSteamId';
+const LOCALSTORAGE_CUSTOM_SE_CHANNEL = 'Twitch_AutoGameStatusUpdate_CustomSeChannel';
+const LOCALSTORAGE_CUSTOM_SE_COMMAND = 'Twitch_AutoGameStatusUpdate_CustomSeCommand';
 
 class AutoGameUpdate {
     #channelId = '';
@@ -26,9 +30,23 @@ class AutoGameUpdate {
     #readChannelConfig() {
         var channelEl = document.getElementById('channel');
         var selected = channelEl.selectedOptions[0];
-        this.#channelId = (selected && selected.dataset.seChannel) || '';
-        this.#updateCommandId = (selected && selected.dataset.seCommand) || '';
-        this.#steamId = (selected && selected.dataset.steamid) || '';
+        if (channelEl.value === '__custom__') {
+            this.#steamId = (document.getElementById('customSteamId') || {}).value || '';
+            this.#channelId = (document.getElementById('customSeChannel') || {}).value || '';
+            this.#updateCommandId = (document.getElementById('customSeCommand') || {}).value || '';
+        } else {
+            this.#channelId = (selected && selected.dataset.seChannel) || '';
+            this.#updateCommandId = (selected && selected.dataset.seCommand) || '';
+            this.#steamId = (selected && selected.dataset.steamid) || '';
+        }
+    }
+
+    #toggleCustomFields() {
+        var channelEl = document.getElementById('channel');
+        var customFields = document.getElementById('customChannelFields');
+        if (customFields) {
+            customFields.style.display = channelEl.value === '__custom__' ? '' : 'none';
+        }
     }
 
     async getSteamStatus() {
@@ -138,11 +156,33 @@ class AutoGameUpdate {
             self.stop();
         });
 
+        var channelEl = document.getElementById('channel');
+        channelEl.addEventListener('change', function () {
+            self.#toggleCustomFields();
+        });
+
         // 載入設定（JWT 用 sessionStorage，其餘用 localStorage）
         document.getElementById('JWTKey').value =
             sessionStorage.getItem(LOCALSTORAGE_JWTKEY) || '';
         document.getElementById('commandReplyTemplate').value =
             localStorage.getItem(LOCALSTORAGE_COMMANDREPLYTEMPLATE) || '';
+
+        // 還原頻道選擇
+        var savedChannel = localStorage.getItem(LOCALSTORAGE_CHANNEL) || '';
+        if (savedChannel) {
+            var hasOption = Array.from(channelEl.options).some(function (o) { return o.value === savedChannel; });
+            if (hasOption) channelEl.value = savedChannel;
+        }
+
+        // 還原自訂欄位
+        var customSteamIdEl = document.getElementById('customSteamId');
+        var customSeChannelEl = document.getElementById('customSeChannel');
+        var customSeCommandEl = document.getElementById('customSeCommand');
+        if (customSteamIdEl) customSteamIdEl.value = localStorage.getItem(LOCALSTORAGE_CUSTOM_STEAMID) || '';
+        if (customSeChannelEl) customSeChannelEl.value = localStorage.getItem(LOCALSTORAGE_CUSTOM_SE_CHANNEL) || '';
+        if (customSeCommandEl) customSeCommandEl.value = localStorage.getItem(LOCALSTORAGE_CUSTOM_SE_COMMAND) || '';
+
+        this.#toggleCustomFields();
     }
 
     async #startLoop() {
@@ -187,10 +227,20 @@ class AutoGameUpdate {
     #saveSettings() {
         sessionStorage.setItem(LOCALSTORAGE_JWTKEY, document.getElementById('JWTKey').value);
         localStorage.setItem(LOCALSTORAGE_COMMANDREPLYTEMPLATE, document.getElementById('commandReplyTemplate').value);
+        localStorage.setItem(LOCALSTORAGE_CHANNEL, document.getElementById('channel').value);
+
+        var customSteamIdEl = document.getElementById('customSteamId');
+        var customSeChannelEl = document.getElementById('customSeChannel');
+        var customSeCommandEl = document.getElementById('customSeCommand');
+        if (customSteamIdEl) localStorage.setItem(LOCALSTORAGE_CUSTOM_STEAMID, customSteamIdEl.value);
+        if (customSeChannelEl) localStorage.setItem(LOCALSTORAGE_CUSTOM_SE_CHANNEL, customSeChannelEl.value);
+        if (customSeCommandEl) localStorage.setItem(LOCALSTORAGE_CUSTOM_SE_COMMAND, customSeCommandEl.value);
     }
 }
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { AutoGameUpdate, STEAM_API_BASE, SE_API_BASE,
-        LOCALSTORAGE_JWTKEY, LOCALSTORAGE_COMMANDREPLYTEMPLATE };
+        LOCALSTORAGE_JWTKEY, LOCALSTORAGE_COMMANDREPLYTEMPLATE,
+        LOCALSTORAGE_CHANNEL, LOCALSTORAGE_CUSTOM_STEAMID,
+        LOCALSTORAGE_CUSTOM_SE_CHANNEL, LOCALSTORAGE_CUSTOM_SE_COMMAND };
 }
