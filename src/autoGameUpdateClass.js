@@ -133,32 +133,30 @@ class AutoGameUpdate {
             var currentCommandReplyEl = document.getElementById('currentCommandReply');
             if (currentCommandReplyEl) currentCommandReplyEl.textContent = commandJson['reply'] || '';
         } catch (error) {
-            showError(errorMsg + '<br/>給開發者的錯誤訊息內容' + error);
+            showError(errorMsg + '\n給開發者的錯誤訊息內容：' + error);
         } finally {
             addLog('完整流程結束');
         }
     }
 
     init() {
-        var self = this;
-
-        document.getElementById('immediatelyUpdate').addEventListener('click', async function () {
-            self.#saveSettings();
-            await self.mainProcess();
+        document.getElementById('immediatelyUpdate').addEventListener('click', async () => {
+            this.#saveSettings();
+            await this.mainProcess();
         });
 
-        document.getElementById('startAutoUpdate').addEventListener('click', async function () {
-            self.#saveSettings();
-            await self.#startLoop();
+        document.getElementById('startAutoUpdate').addEventListener('click', async () => {
+            this.#saveSettings();
+            await this.#startLoop();
         });
 
-        document.getElementById('stopAutoUpdate').addEventListener('click', function () {
-            self.stop();
+        document.getElementById('stopAutoUpdate').addEventListener('click', () => {
+            this.stop();
         });
 
         var channelEl = document.getElementById('channel');
-        channelEl.addEventListener('change', function () {
-            self.#toggleCustomFields();
+        channelEl.addEventListener('change', () => {
+            this.#toggleCustomFields();
         });
 
         // 載入設定（JWT 用 sessionStorage，其餘用 localStorage）
@@ -195,14 +193,13 @@ class AutoGameUpdate {
         document.getElementById('stopAutoUpdate').style.display = '';
         document.getElementById('loading').style.display = '';
 
-        var self = this;
-        var runOnce = async function () {
-            await self.mainProcess();
+        var runOnce = async () => {
+            await this.mainProcess();
             var now = new Date();
-            now.setMinutes(now.getMinutes() + self.#autoUpdateMinutes);
+            now.setMinutes(now.getMinutes() + this.#autoUpdateMinutes);
             document.getElementById('nextUpdateStamp').textContent =
                 '下次自動更新時間：' + now.toLocaleString();
-            self.#interval = setTimeout(runOnce, self.#autoUpdateMinutes * 60 * 1000);
+            this.#interval = setTimeout(runOnce, this.#autoUpdateMinutes * 60 * 1000);
         };
         await runOnce();
     }
