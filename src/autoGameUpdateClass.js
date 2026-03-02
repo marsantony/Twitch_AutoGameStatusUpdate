@@ -61,16 +61,20 @@ class AutoGameUpdate {
         return data['GameName'] || '';
     }
 
-    async getStreamelementsCommand() {
+    #buildSeHeaders(hasBody) {
         var jwtKey = document.getElementById('JWTKey').value;
+        var h = {
+            'Accept': 'application/json; charset=utf-8, application/json',
+            'Authorization': 'Bearer ' + jwtKey
+        };
+        if (hasBody) h['Content-Type'] = 'application/json';
+        return h;
+    }
+
+    async getStreamelementsCommand() {
         var response = await this.#fetchFn(
             SE_API_BASE + '/' + this.#channelId + '/' + this.#updateCommandId,
-            {
-                headers: {
-                    'Accept': 'application/json; charset=utf-8, application/json',
-                    'Authorization': 'Bearer ' + jwtKey
-                }
-            }
+            { headers: this.#buildSeHeaders(false) }
         );
         if (!response.ok) {
             throw new Error(response.status + ':' + response.statusText);
@@ -81,16 +85,11 @@ class AutoGameUpdate {
     }
 
     async updateStreamelementsCommand(commandJson) {
-        var jwtKey = document.getElementById('JWTKey').value;
         var response = await this.#fetchFn(
             SE_API_BASE + '/' + this.#channelId + '/' + this.#updateCommandId,
             {
                 method: 'PUT',
-                headers: {
-                    'Accept': 'application/json; charset=utf-8, application/json',
-                    'Authorization': 'Bearer ' + jwtKey,
-                    'Content-Type': 'application/json'
-                },
+                headers: this.#buildSeHeaders(true),
                 body: JSON.stringify(commandJson),
             }
         );
@@ -120,7 +119,7 @@ class AutoGameUpdate {
 
             if (currentGameName) {
                 var template = document.getElementById('commandReplyTemplate').value;
-                var templateFullReply = template.replace(/{game}/, currentGameName);
+                var templateFullReply = template.replace(/{game}/g, currentGameName);
 
                 if (commandJson['reply'] !== templateFullReply) {
                     commandJson['reply'] = templateFullReply;
