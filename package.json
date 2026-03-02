@@ -2,9 +2,11 @@
   "name": "twitch-auto-game-status-update",
   "private": true,
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.18",
     "vitest": "^4.0.0",
     "jsdom": "^26.0.0"
   }
