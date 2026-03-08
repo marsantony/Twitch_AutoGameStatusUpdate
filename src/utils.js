@@ -1,6 +1,6 @@
 function addLog(message) {
-    var currentStamp = new Date().toLocaleString();
-    var logEl = document.getElementById('log');
+    const currentStamp = new Date().toLocaleString();
+    const logEl = document.getElementById('log');
     logEl.value = currentStamp + ':' + JSON.stringify(message) + '\r\n' + logEl.value;
 }
 

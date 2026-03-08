@@ -28,8 +28,8 @@ class AutoGameUpdate {
     }
 
     #readChannelConfig() {
-        var channelEl = document.getElementById('channel');
-        var selected = channelEl.selectedOptions[0];
+        const channelEl = document.getElementById('channel');
+        const selected = channelEl.selectedOptions[0];
         if (channelEl.value === '__custom__') {
             this.#steamId = (document.getElementById('customSteamId') || {}).value || '';
             this.#channelId = (document.getElementById('customSeChannel') || {}).value || '';
@@ -42,28 +42,28 @@ class AutoGameUpdate {
     }
 
     #toggleCustomFields() {
-        var channelEl = document.getElementById('channel');
-        var customFields = document.getElementById('customChannelFields');
+        const channelEl = document.getElementById('channel');
+        const customFields = document.getElementById('customChannelFields');
         if (customFields) {
             customFields.style.display = channelEl.value === '__custom__' ? '' : 'none';
         }
     }
 
     async getSteamStatus() {
-        var response = await this.#fetchFn(
+        const response = await this.#fetchFn(
             STEAM_API_BASE + '?steamid=' + encodeURIComponent(this.#steamId)
         );
         if (!response.ok) {
             throw new Error(response.status + ':' + response.statusText);
         }
-        var data = await response.json();
+        const data = await response.json();
         addLog(data);
         return data['GameName'] || '';
     }
 
     #buildSeHeaders(hasBody) {
-        var jwtKey = document.getElementById('JWTKey').value;
-        var h = {
+        const jwtKey = document.getElementById('JWTKey').value;
+        const h = {
             'Accept': 'application/json; charset=utf-8, application/json',
             'Authorization': 'Bearer ' + jwtKey
         };
@@ -72,20 +72,20 @@ class AutoGameUpdate {
     }
 
     async getStreamelementsCommand() {
-        var response = await this.#fetchFn(
+        const response = await this.#fetchFn(
             SE_API_BASE + '/' + this.#channelId + '/' + this.#updateCommandId,
             { headers: this.#buildSeHeaders(false) }
         );
         if (!response.ok) {
             throw new Error(response.status + ':' + response.statusText);
         }
-        var data = await response.json();
+        const data = await response.json();
         addLog(data);
         return data;
     }
 
     async updateStreamelementsCommand(commandJson) {
-        var response = await this.#fetchFn(
+        const response = await this.#fetchFn(
             SE_API_BASE + '/' + this.#channelId + '/' + this.#updateCommandId,
             {
                 method: 'PUT',
@@ -96,30 +96,30 @@ class AutoGameUpdate {
         if (!response.ok) {
             throw new Error(response.status + ':' + response.statusText);
         }
-        var data = await response.json();
+        const data = await response.json();
         addLog(data);
         return data;
     }
 
     async mainProcess() {
-        var errorMsg = '';
+        let errorMsg = '';
         try {
             addLog('完整流程開始');
             hideAllAlerts();
             this.#readChannelConfig();
 
             errorMsg = '無法取得steam狀態';
-            var steamGameName = await this.getSteamStatus();
+            const steamGameName = await this.getSteamStatus();
             document.getElementById('currentSteamGameName').textContent = steamGameName;
 
-            var currentGameName = document.getElementById('gameName').value || steamGameName;
+            const currentGameName = document.getElementById('gameName').value || steamGameName;
 
             errorMsg = '無法取得目前指令的內容';
-            var commandJson = await this.getStreamelementsCommand();
+            let commandJson = await this.getStreamelementsCommand();
 
             if (currentGameName) {
-                var template = document.getElementById('commandReplyTemplate').value;
-                var templateFullReply = template.replace(/{game}/g, currentGameName);
+                const template = document.getElementById('commandReplyTemplate').value;
+                const templateFullReply = template.replace(/{game}/g, currentGameName);
 
                 if (commandJson['reply'] !== templateFullReply) {
                     commandJson['reply'] = templateFullReply;
@@ -129,7 +129,7 @@ class AutoGameUpdate {
                 }
             }
 
-            var currentCommandReplyEl = document.getElementById('currentCommandReply');
+            const currentCommandReplyEl = document.getElementById('currentCommandReply');
             if (currentCommandReplyEl) currentCommandReplyEl.textContent = commandJson['reply'] || '';
         } catch (error) {
             showError(errorMsg + '\n給開發者的錯誤訊息內容：' + error);
@@ -153,7 +153,7 @@ class AutoGameUpdate {
             this.stop();
         });
 
-        var channelEl = document.getElementById('channel');
+        const channelEl = document.getElementById('channel');
         channelEl.addEventListener('change', () => {
             this.#toggleCustomFields();
         });
@@ -165,16 +165,16 @@ class AutoGameUpdate {
             localStorage.getItem(LOCALSTORAGE_COMMANDREPLYTEMPLATE) || '';
 
         // 還原頻道選擇
-        var savedChannel = localStorage.getItem(LOCALSTORAGE_CHANNEL) || '';
+        const savedChannel = localStorage.getItem(LOCALSTORAGE_CHANNEL) || '';
         if (savedChannel) {
-            var hasOption = Array.from(channelEl.options).some(function (o) { return o.value === savedChannel; });
+            const hasOption = Array.from(channelEl.options).some((o) => o.value === savedChannel);
             if (hasOption) channelEl.value = savedChannel;
         }
 
         // 還原自訂欄位
-        var customSteamIdEl = document.getElementById('customSteamId');
-        var customSeChannelEl = document.getElementById('customSeChannel');
-        var customSeCommandEl = document.getElementById('customSeCommand');
+        const customSteamIdEl = document.getElementById('customSteamId');
+        const customSeChannelEl = document.getElementById('customSeChannel');
+        const customSeCommandEl = document.getElementById('customSeCommand');
         if (customSteamIdEl) customSteamIdEl.value = localStorage.getItem(LOCALSTORAGE_CUSTOM_STEAMID) || '';
         if (customSeChannelEl) customSeChannelEl.value = localStorage.getItem(LOCALSTORAGE_CUSTOM_SE_CHANNEL) || '';
         if (customSeCommandEl) customSeCommandEl.value = localStorage.getItem(LOCALSTORAGE_CUSTOM_SE_COMMAND) || '';
@@ -192,9 +192,9 @@ class AutoGameUpdate {
         document.getElementById('stopAutoUpdate').style.display = '';
         document.getElementById('loading').style.display = '';
 
-        var runOnce = async () => {
+        const runOnce = async () => {
             await this.mainProcess();
-            var now = new Date();
+            const now = new Date();
             now.setMinutes(now.getMinutes() + this.#autoUpdateMinutes);
             document.getElementById('nextUpdateStamp').textContent =
                 '下次自動更新時間：' + now.toLocaleString();
@@ -225,9 +225,9 @@ class AutoGameUpdate {
         localStorage.setItem(LOCALSTORAGE_COMMANDREPLYTEMPLATE, document.getElementById('commandReplyTemplate').value);
         localStorage.setItem(LOCALSTORAGE_CHANNEL, document.getElementById('channel').value);
 
-        var customSteamIdEl = document.getElementById('customSteamId');
-        var customSeChannelEl = document.getElementById('customSeChannel');
-        var customSeCommandEl = document.getElementById('customSeCommand');
+        const customSteamIdEl = document.getElementById('customSteamId');
+        const customSeChannelEl = document.getElementById('customSeChannel');
+        const customSeCommandEl = document.getElementById('customSeCommand');
         if (customSteamIdEl) localStorage.setItem(LOCALSTORAGE_CUSTOM_STEAMID, customSteamIdEl.value);
         if (customSeChannelEl) localStorage.setItem(LOCALSTORAGE_CUSTOM_SE_CHANNEL, customSeChannelEl.value);
         if (customSeCommandEl) localStorage.setItem(LOCALSTORAGE_CUSTOM_SE_COMMAND, customSeCommandEl.value);

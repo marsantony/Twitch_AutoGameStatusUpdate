@@ -7,7 +7,7 @@
     <title>自動更新遊戲狀態</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://marsantony.github.io/shared/nav.css">
 
     <!--Avoid timers throttling by browser when tab is inactive.-->
@@ -15,13 +15,43 @@
     <script src="./js/HackTimerWorker.min.js"></script>
 
     <style>
+        :root {
+            --bg: #c8ccd6;
+            --shadow-dark: #a0a4ae;
+            --shadow-light: #f0f4fc;
+            --text-primary: #2a3040;
+            --text-secondary: #505868;
+            --text-muted: #808898;
+            --accent: #5a7aed;
+            --danger: #c0392b;
+            --success: #2d7a4f;
+            --neu-raised: 5px 5px 10px var(--shadow-dark), -5px -5px 10px var(--shadow-light);
+            --neu-raised-sm: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
+            --neu-pressed: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+            --nav-bg: rgba(208, 212, 222, 0.4);
+            --nav-text: #2a3040;
+            --nav-text-secondary: #505868;
+            --footer-border: #bec2ca;
+            --footer-text: #808898;
+            --footer-link-color: #5a7aed;
+        }
+
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Nunito Sans', sans-serif;
-            background: linear-gradient(180deg, #dcdfe4 0%, #d4d7dd 30%, #cfd2d8 70%, #c9ccd3 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background:
+                radial-gradient(ellipse at 20% 10%, rgba(255,255,255,0.35) 0%, transparent 50%),
+                repeating-linear-gradient(
+                    135deg,
+                    rgba(255,255,255,0.12) 0px,
+                    rgba(255,255,255,0) 1px,
+                    rgba(0,0,0,0.08) 1px,
+                    rgba(0,0,0,0) 2px
+                ),
+                linear-gradient(135deg, #f0f2f6 0%, #d8dce4 25%, #c4c8d2 50%, #aeb2bc 80%, #a0a4ae 100%);
             background-attachment: fixed;
-            color: #5a5f6b;
+            color: var(--text-secondary);
             line-height: 1.6;
             padding-top: 56px;
         }
@@ -34,11 +64,11 @@
 
         h1 {
             font-size: 1.5rem;
-            font-weight: 700;
-            color: #3a3f4a;
+            font-weight: 600;
+            color: var(--text-primary);
             margin-bottom: 2rem;
             padding-bottom: 0.5rem;
-            border-bottom: 2px solid #c0c3c9;
+            border-bottom: 2px solid var(--shadow-dark);
         }
 
         /* ── Alert ── */
@@ -48,12 +78,12 @@
             font-size: 0.85rem;
             font-weight: 600;
             margin-bottom: 1rem;
-            background: #d4d7dd;
-            box-shadow: inset 3px 3px 6px #b0b3b9, inset -3px -3px 6px #f5f6f8;
+            background: var(--bg);
+            box-shadow: var(--neu-pressed);
         }
 
-        .alert-success { color: #2d7a4f; }
-        .alert-danger  { color: #c0392b; }
+        .alert-success { color: var(--success); }
+        .alert-danger  { color: var(--danger); }
 
         /* ── Form ── */
         .form-group {
@@ -62,29 +92,32 @@
 
         .form-group label {
             display: block;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #3a3f4a;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-primary);
             margin-bottom: 0.4rem;
         }
 
         .form-group label a,
         .form-group .form-link {
+            font-family: 'Inter', sans-serif;
             font-weight: 400;
-            color: #3a6fb5;
+            color: var(--text-muted);
             text-decoration: none;
             font-size: 0.8rem;
+            transition: color 0.2s;
         }
 
         .form-group label a:hover,
         .form-group .form-link:hover {
-            text-decoration: underline;
+            color: var(--accent);
         }
 
         .form-hint {
             display: block;
             font-size: 0.75rem;
-            color: #8a8f9a;
+            color: var(--text-muted);
             margin-bottom: 0.4rem;
         }
 
@@ -96,11 +129,11 @@
             padding: 0.7rem 1rem;
             border: none;
             border-radius: 12px;
-            background: #d4d7dd;
-            box-shadow: inset 3px 3px 6px #b0b3b9, inset -3px -3px 6px #f5f6f8;
+            background: var(--bg);
+            box-shadow: var(--neu-pressed);
             font-family: inherit;
             font-size: 0.9rem;
-            color: #3a3f4a;
+            color: var(--text-primary);
             outline: none;
             transition: box-shadow 0.2s;
         }
@@ -109,13 +142,13 @@
         input[type="password"]:focus,
         select:focus,
         textarea:focus {
-            box-shadow: inset 4px 4px 8px #a8abb1, inset -4px -4px 8px #fafbfd;
+            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
         }
 
         select {
             cursor: pointer;
             appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235a5f6b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23505868' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 1rem center;
             padding-right: 2.5rem;
@@ -128,6 +161,8 @@
 
         textarea {
             resize: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
         }
 
         /* ── Status ── */
@@ -136,14 +171,15 @@
         }
 
         .status-group label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #8a8f9a;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-muted);
         }
 
         .status-group span {
             font-size: 0.85rem;
-            color: #3a3f4a;
+            color: var(--text-primary);
             font-weight: 600;
         }
 
@@ -160,43 +196,46 @@
             padding: 0.6rem 1.25rem;
             border: none;
             border-radius: 12px;
-            background: #d4d7dd;
-            box-shadow: 4px 4px 8px #b0b3b9, -4px -4px 8px #f5f6f8;
+            background: var(--bg);
+            box-shadow: var(--neu-raised-sm);
             font-family: inherit;
             font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
-            transition: box-shadow 0.2s;
+            transition: box-shadow 0.2s, color 0.2s;
+            color: var(--text-secondary);
         }
 
         .btn:hover {
-            box-shadow: inset 3px 3px 6px #b0b3b9, inset -3px -3px 6px #f5f6f8;
+            box-shadow: var(--neu-pressed);
+            color: var(--accent);
         }
 
         .btn:active {
-            box-shadow: inset 4px 4px 8px #a8abb1, inset -4px -4px 8px #fafbfd;
+            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
         }
 
         .btn:disabled {
             opacity: 0.4;
             cursor: not-allowed;
-            box-shadow: 2px 2px 4px #b0b3b9, -2px -2px 4px #f5f6f8;
+            box-shadow: 2px 2px 4px var(--shadow-dark), -2px -2px 4px var(--shadow-light);
         }
 
         .btn:disabled:hover {
-            box-shadow: 2px 2px 4px #b0b3b9, -2px -2px 4px #f5f6f8;
+            box-shadow: 2px 2px 4px var(--shadow-dark), -2px -2px 4px var(--shadow-light);
+            color: var(--text-secondary);
         }
 
-        .btn-primary { color: #3a6fb5; }
-        .btn-danger  { color: #c0392b; }
+        .btn-primary { color: var(--accent); }
+        .btn-danger  { color: var(--danger); }
 
         /* ── Spinner ── */
         .spinner {
             display: inline-block;
             width: 0.85rem;
             height: 0.85rem;
-            border: 2px solid #b0b3b9;
-            border-top-color: #3a6fb5;
+            border: 2px solid var(--shadow-dark);
+            border-top-color: var(--accent);
             border-radius: 50%;
             animation: spin 0.6s linear infinite;
             vertical-align: middle;
@@ -212,7 +251,7 @@
             display: inline-block;
             position: relative;
             cursor: pointer;
-            color: #8a8f9a;
+            color: var(--text-muted);
             font-size: 0.85rem;
             margin-left: 0.25rem;
         }
@@ -227,7 +266,7 @@
             z-index: 10;
             max-width: 500px;
             border-radius: 8px;
-            box-shadow: 4px 4px 12px rgba(0,0,0,0.15);
+            box-shadow: var(--neu-raised);
         }
 
     </style>
@@ -322,7 +361,7 @@
     <script src="./src/utils.js"></script>
     <script src="./src/autoGameUpdateClass.js"></script>
     <script>
-        var updater = new AutoGameUpdate();
+        const updater = new AutoGameUpdate();
         updater.init();
     </script>
 </body>
