@@ -1,4 +1,5 @@
-/* global addLog, hideAllAlerts, showError, showSuccess */
+/* global addLog, logStep, hideAllAlerts, showError, showSuccess,
+          getOverrideWarningText, getTemplateWarningText */
 
 const STEAM_API_BASE = 'https://asia-east1-steamwebapi-394409.cloudfunctions.net/GetSteamStatus';
 const SE_API_BASE = 'https://api.streamelements.com/kappa/v2/bot/commands';
@@ -49,16 +50,60 @@ class AutoGameUpdate {
         }
     }
 
+    #updateOverrideWarning() {
+        const el = document.getElementById('gameNameOverrideWarning');
+        if (!el) return;
+        el.textContent = getOverrideWarningText(document.getElementById('gameName').value);
+    }
+
+    #updateTemplateWarning() {
+        const el = document.getElementById('templateWarning');
+        if (!el) return;
+        el.textContent = getTemplateWarningText(document.getElementById('commandReplyTemplate').value);
+    }
+
+    #updateReplyPreview() {
+        const previewEl = document.getElementById('replyPreview');
+        if (!previewEl) return;
+        const customName = document.getElementById('gameName').value;
+        const template = document.getElementById('commandReplyTemplate').value;
+        const lastSteamGameName = document.getElementById('currentSteamGameName').textContent;
+        const effectiveName = customName || lastSteamGameName;
+
+        if (!template) {
+            previewEl.textContent = '（Template 為空）';
+            previewEl.classList.add('readout-empty');
+            return;
+        }
+        if (!effectiveName) {
+            previewEl.textContent = '（尚未取得遊戲名稱，請按「立即更新」）';
+            previewEl.classList.add('readout-empty');
+            return;
+        }
+        previewEl.classList.remove('readout-empty');
+        previewEl.textContent = template.replace(/{game}/g, effectiveName);
+    }
+
     async getSteamStatus() {
-        const response = await this.#fetchFn(
-            STEAM_API_BASE + '?steamid=' + encodeURIComponent(this.#steamId)
-        );
+        const url = STEAM_API_BASE + '?steamid=' + encodeURIComponent(this.#steamId);
+        const response = await this.#fetchFn(url);
         if (!response.ok) {
+            logStep('取得 Steam 遊戲狀態', {
+                method: 'GET', url,
+                error: response.status + ' ' + response.statusText
+            });
             throw new Error(response.status + ':' + response.statusText);
         }
         const data = await response.json();
-        addLog(data);
-        return data['GameName'] || '';
+        const gameName = data['GameName'] || '';
+        logStep('取得 Steam 遊戲狀態', {
+            method: 'GET', url,
+            response: data,
+            ok: gameName
+                ? '取得遊戲名稱「' + gameName + '」'
+                : '⚠ 未取得遊戲名稱（可能：沒玩遊戲 / Steam 隱私為非公開 / 遊戲詳細資料未公開）'
+        });
+        return gameName;
     }
 
     #buildSeHeaders(hasBody) {
@@ -72,69 +117,105 @@ class AutoGameUpdate {
     }
 
     async getStreamelementsCommand() {
-        const response = await this.#fetchFn(
-            SE_API_BASE + '/' + this.#channelId + '/' + this.#updateCommandId,
-            { headers: this.#buildSeHeaders(false) }
-        );
+        const url = SE_API_BASE + '/' + this.#channelId + '/' + this.#updateCommandId;
+        const response = await this.#fetchFn(url, { headers: this.#buildSeHeaders(false) });
         if (!response.ok) {
+            const hint = response.status === 401 ? '（JWT 無效或過期）'
+                : response.status === 404 ? '（channel 或 command ID 錯誤）'
+                : '';
+            logStep('取得 SE 指令', {
+                method: 'GET', url,
+                error: response.status + ' ' + response.statusText + hint
+            });
             throw new Error(response.status + ':' + response.statusText);
         }
         const data = await response.json();
-        addLog(data);
+        logStep('取得 SE 指令', {
+            method: 'GET', url,
+            response: { command: data.command, reply: data.reply, _id: data._id },
+            ok: '目前 reply：「' + (data.reply || '(空)') + '」'
+        });
         return data;
     }
 
     async updateStreamelementsCommand(commandJson) {
-        const response = await this.#fetchFn(
-            SE_API_BASE + '/' + this.#channelId + '/' + this.#updateCommandId,
-            {
-                method: 'PUT',
-                headers: this.#buildSeHeaders(true),
-                body: JSON.stringify(commandJson),
-            }
-        );
+        const url = SE_API_BASE + '/' + this.#channelId + '/' + this.#updateCommandId;
+        const response = await this.#fetchFn(url, {
+            method: 'PUT',
+            headers: this.#buildSeHeaders(true),
+            body: JSON.stringify(commandJson),
+        });
         if (!response.ok) {
+            const hint = response.status === 401
+                ? '（JWT 無權更新此 channel，請確認頻道主已將你設為 Bot Moderator）'
+                : '';
+            logStep('更新 SE 指令', {
+                method: 'PUT', url,
+                body: { reply: commandJson.reply },
+                error: response.status + ' ' + response.statusText + hint
+            });
             throw new Error(response.status + ':' + response.statusText);
         }
         const data = await response.json();
-        addLog(data);
+        logStep('更新 SE 指令', {
+            method: 'PUT', url,
+            body: { reply: commandJson.reply },
+            response: { reply: data.reply, _id: data._id },
+            ok: '更新成功，新 reply：「' + data.reply + '」'
+        });
         return data;
     }
 
     async mainProcess() {
         let errorMsg = '';
         try {
-            addLog('完整流程開始');
+            addLog('───── 完整流程開始 ─────');
             hideAllAlerts();
             this.#readChannelConfig();
+
+            const customName = document.getElementById('gameName').value;
+            const overrideMsg = getOverrideWarningText(customName);
+            if (overrideMsg) addLog('⚠ ' + overrideMsg);
+
+            const template = document.getElementById('commandReplyTemplate').value;
+            const templateMsg = getTemplateWarningText(template);
+            if (templateMsg) addLog('⚠ ' + templateMsg);
 
             errorMsg = '無法取得steam狀態';
             const steamGameName = await this.getSteamStatus();
             document.getElementById('currentSteamGameName').textContent = steamGameName;
 
-            const currentGameName = document.getElementById('gameName').value || steamGameName;
+            const currentGameName = customName || steamGameName;
 
             errorMsg = '無法取得目前指令的內容';
             let commandJson = await this.getStreamelementsCommand();
 
             if (currentGameName) {
-                const template = document.getElementById('commandReplyTemplate').value;
                 const templateFullReply = template.replace(/{game}/g, currentGameName);
+                logStep('比對 reply', {
+                    ok: '目標：「' + templateFullReply + '」 ／ 當前：「' + commandJson['reply'] + '」'
+                });
 
                 if (commandJson['reply'] !== templateFullReply) {
                     commandJson['reply'] = templateFullReply;
                     errorMsg = '無法更新目前指令的內容';
                     commandJson = await this.updateStreamelementsCommand(commandJson);
                     showSuccess('更新成功<br/>' + commandJson['reply']);
+                } else {
+                    logStep('比對 reply', { skip: 'reply 已是最新（' + currentGameName + '），跳過更新' });
                 }
+            } else {
+                logStep('比對 reply', { skip: '無有效遊戲名稱（Steam 為空且未設自訂），不更新 SE' });
             }
 
             const currentCommandReplyEl = document.getElementById('currentCommandReply');
             if (currentCommandReplyEl) currentCommandReplyEl.textContent = commandJson['reply'] || '';
         } catch (error) {
+            logStep('流程終止', { error: errorMsg + '：' + String(error) });
             showError(errorMsg + '\n給開發者的錯誤訊息內容：' + error);
         } finally {
-            addLog('完整流程結束');
+            addLog('───── 完整流程結束 ─────');
+            this.#updateReplyPreview();
         }
     }
 
@@ -156,6 +237,15 @@ class AutoGameUpdate {
         const channelEl = document.getElementById('channel');
         channelEl.addEventListener('change', () => {
             this.#toggleCustomFields();
+        });
+
+        document.getElementById('gameName').addEventListener('input', () => {
+            this.#updateOverrideWarning();
+            this.#updateReplyPreview();
+        });
+        document.getElementById('commandReplyTemplate').addEventListener('input', () => {
+            this.#updateTemplateWarning();
+            this.#updateReplyPreview();
         });
 
         // 載入設定（JWT 用 sessionStorage，其餘用 localStorage）
@@ -180,11 +270,17 @@ class AutoGameUpdate {
         if (customSeCommandEl) customSeCommandEl.value = localStorage.getItem(LOCALSTORAGE_CUSTOM_SE_COMMAND) || '';
 
         this.#toggleCustomFields();
+
+        // 還原欄位後初次渲染警告與預覽
+        this.#updateOverrideWarning();
+        this.#updateTemplateWarning();
+        this.#updateReplyPreview();
     }
 
     async #startLoop() {
         if (this.#isRunning) return;
         this.#isRunning = true;
+        addLog('▶ 開始自動更新（每 ' + this.#autoUpdateMinutes + ' 分鐘一次）');
 
         document.getElementById('channel').disabled = true;
         document.getElementById('immediatelyUpdate').style.display = 'none';
@@ -206,6 +302,7 @@ class AutoGameUpdate {
     stop() {
         if (!this.#isRunning) return;
         this.#isRunning = false;
+        addLog('■ 停止自動更新');
 
         if (this.#interval) {
             clearTimeout(this.#interval);

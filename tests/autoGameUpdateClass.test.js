@@ -6,9 +6,12 @@ import * as utils from '../src/utils.js';
 
 // 掛載全域函數（class 用 /* global */ 引用）
 globalThis.addLog = utils.addLog;
+globalThis.logStep = utils.logStep;
 globalThis.hideAllAlerts = utils.hideAllAlerts;
 globalThis.showError = utils.showError;
 globalThis.showSuccess = utils.showSuccess;
+globalThis.getOverrideWarningText = utils.getOverrideWarningText;
+globalThis.getTemplateWarningText = utils.getTemplateWarningText;
 
 function setupDOM() {
     document.body.innerHTML = `
@@ -30,9 +33,12 @@ function setupDOM() {
         </div>
         <input type="password" id="JWTKey" value="test-jwt" />
         <input type="text" id="gameName" value="" />
+        <span id="gameNameOverrideWarning" class="form-warning"></span>
         <input type="text" id="commandReplyTemplate" value="目前遊戲：{game}" />
+        <span id="templateWarning" class="form-warning-strong"></span>
         <span id="currentSteamGameName"></span>
         <span id="currentCommandReply"></span>
+        <div id="replyPreview" class="readout readout-empty">（尚未取得遊戲名稱，請按「立即更新」）</div>
         <textarea id="log"></textarea>
         <div id="successAlert" style="display:none;"></div>
         <div id="errorAlert" style="display:none;"></div>
@@ -292,6 +298,395 @@ describe('AutoGameUpdate', () => {
 
             expect(document.getElementById('errorAlert').style.display).not.toBe('none');
             expect(document.getElementById('errorAlert').innerHTML).toContain('無法取得');
+        });
+    });
+
+    describe('結構化 log（Phase 2）', () => {
+        it('catch block 把錯誤寫進 log textarea', async () => {
+            var mockFetch = vi.fn(() =>
+                Promise.resolve({ ok: false, status: 500, statusText: 'Internal Server Error' })
+            );
+            var instance = createInstance(mockFetch);
+            instance.init();
+            await instance.mainProcess();
+
+            var logValue = document.getElementById('log').value;
+            expect(logValue).toContain('✗');
+            expect(logValue).toContain('流程終止');
+            expect(logValue).toContain('無法取得');
+        });
+
+        it('SE GET 401 在 log 中含 JWT 過期提示', async () => {
+            var mockFetch = vi.fn((url) => {
+                if (typeof url === 'string' && url.includes('GetSteamStatus')) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ GameName: 'Test' }),
+                    });
+                }
+                return Promise.resolve({ ok: false, status: 401, statusText: 'Unauthorized' });
+            });
+            var instance = createInstance(mockFetch);
+            instance.init();
+            await instance.mainProcess();
+
+            var logValue = document.getElementById('log').value;
+            expect(logValue).toContain('JWT 無效或過期');
+        });
+
+        it('SE GET 404 在 log 中含 channel/command 錯誤提示', async () => {
+            var mockFetch = vi.fn((url) => {
+                if (typeof url === 'string' && url.includes('GetSteamStatus')) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ GameName: 'Test' }),
+                    });
+                }
+                return Promise.resolve({ ok: false, status: 404, statusText: 'Not Found' });
+            });
+            var instance = createInstance(mockFetch);
+            instance.init();
+            await instance.mainProcess();
+
+            var logValue = document.getElementById('log').value;
+            expect(logValue).toContain('channel 或 command ID 錯誤');
+        });
+
+        it('SE PUT 401 在 log 中含 Bot Moderator 提示', async () => {
+            var mockFetch = vi.fn((url, opts) => {
+                if (typeof url === 'string' && url.includes('GetSteamStatus')) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ GameName: 'Sura Demo' }),
+                    });
+                }
+                if (opts && opts.method === 'PUT') {
+                    return Promise.resolve({ ok: false, status: 401, statusText: 'Unauthorized' });
+                }
+                // SE GET 成功，回傳舊 reply（會觸發 PUT 嘗試）
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ reply: '目前遊戲：舊遊戲' }),
+                });
+            });
+            var instance = createInstance(mockFetch);
+            instance.init();
+            await instance.mainProcess();
+
+            var logValue = document.getElementById('log').value;
+            expect(logValue).toContain('Bot Moderator');
+        });
+
+        it('reply 已是最新時 log 顯示「跳過更新」', async () => {
+            var mockFetch = vi.fn((url) => {
+                if (typeof url === 'string' && url.includes('GetSteamStatus')) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ GameName: 'Sura Demo' }),
+                    });
+                }
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ reply: '目前遊戲：Sura Demo' }),
+                });
+            });
+            var instance = createInstance(mockFetch);
+            instance.init();
+            await instance.mainProcess();
+
+            var logValue = document.getElementById('log').value;
+            expect(logValue).toContain('↪');
+            expect(logValue).toContain('跳過更新');
+            expect(logValue).toContain('Sura Demo');
+        });
+
+        it('自訂遊戲名稱有值時 log 顯示覆寫提醒', async () => {
+            var mockFetch = vi.fn((url) => {
+                if (typeof url === 'string' && url.includes('GetSteamStatus')) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ GameName: 'Sura Demo' }),
+                    });
+                }
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ reply: '舊內容' }),
+                });
+            });
+            var instance = createInstance(mockFetch);
+            instance.init();
+            document.getElementById('gameName').value = '蓋掉';
+            await instance.mainProcess();
+
+            var logValue = document.getElementById('log').value;
+            expect(logValue).toContain('已覆寫 Steam 結果');
+            expect(logValue).toContain('「蓋掉」');
+        });
+
+        it('Template 缺 {game} 時 log 顯示警告', async () => {
+            var mockFetch = vi.fn((url) => {
+                if (typeof url === 'string' && url.includes('GetSteamStatus')) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ GameName: 'Sura Demo' }),
+                    });
+                }
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ reply: '舊內容' }),
+                });
+            });
+            var instance = createInstance(mockFetch);
+            instance.init();
+            document.getElementById('commandReplyTemplate').value = '硬寫的內容（缺佔位符）';
+            await instance.mainProcess();
+
+            var logValue = document.getElementById('log').value;
+            expect(logValue).toContain('Template 缺少 {game}');
+        });
+
+        it('開始 / 結束標記出現在 log', async () => {
+            var mockFetch = vi.fn(() =>
+                Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ GameName: '' }),
+                })
+            );
+            var instance = createInstance(mockFetch);
+            instance.init();
+            await instance.mainProcess();
+
+            var logValue = document.getElementById('log').value;
+            expect(logValue).toContain('完整流程開始');
+            expect(logValue).toContain('完整流程結束');
+        });
+
+        it('log 不應出現 JWT 字串', async () => {
+            var mockFetch = vi.fn((url) => {
+                if (typeof url === 'string' && url.includes('GetSteamStatus')) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ GameName: 'Sura Demo' }),
+                    });
+                }
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ reply: '目前遊戲：Sura Demo' }),
+                });
+            });
+            var instance = createInstance(mockFetch);
+            instance.init();
+            document.getElementById('JWTKey').value = 'super-secret-jwt-token-12345';
+            await instance.mainProcess();
+
+            var logValue = document.getElementById('log').value;
+            expect(logValue).not.toContain('super-secret-jwt-token-12345');
+        });
+    });
+
+    describe('UI 警告與預覽（Phase 3）', () => {
+        it('填自訂遊戲名稱後 input 事件觸發 warning 顯示', () => {
+            var instance = createInstance(vi.fn());
+            instance.init();
+
+            var input = document.getElementById('gameName');
+            input.value = '我的遊戲';
+            input.dispatchEvent(new Event('input'));
+
+            var warning = document.getElementById('gameNameOverrideWarning').textContent;
+            expect(warning).toContain('已覆寫 Steam 結果');
+            expect(warning).toContain('「我的遊戲」');
+        });
+
+        it('清空自訂遊戲名稱後 warning 消失', () => {
+            var instance = createInstance(vi.fn());
+            instance.init();
+
+            var input = document.getElementById('gameName');
+            input.value = '先填';
+            input.dispatchEvent(new Event('input'));
+            input.value = '';
+            input.dispatchEvent(new Event('input'));
+
+            expect(document.getElementById('gameNameOverrideWarning').textContent).toBe('');
+        });
+
+        it('Template 不含 {game} 時 warning 顯示', () => {
+            var instance = createInstance(vi.fn());
+            instance.init();
+
+            var input = document.getElementById('commandReplyTemplate');
+            input.value = '硬寫不用佔位符';
+            input.dispatchEvent(new Event('input'));
+
+            expect(document.getElementById('templateWarning').textContent).toContain('Template 缺少 {game}');
+        });
+
+        it('Template 含 {game} 時 warning 不顯示', () => {
+            var instance = createInstance(vi.fn());
+            instance.init();
+
+            var input = document.getElementById('commandReplyTemplate');
+            input.value = '遊戲：{game}';
+            input.dispatchEvent(new Event('input'));
+
+            expect(document.getElementById('templateWarning').textContent).toBe('');
+        });
+
+        it('Template 為空時 warning 不顯示（empty 不是 will-break）', () => {
+            var instance = createInstance(vi.fn());
+            instance.init();
+
+            var input = document.getElementById('commandReplyTemplate');
+            input.value = '';
+            input.dispatchEvent(new Event('input'));
+
+            expect(document.getElementById('templateWarning').textContent).toBe('');
+        });
+
+        it('init 時 customName 已存在則 warning 立刻渲染', () => {
+            document.getElementById('gameName').value = '我自訂的';
+            var instance = createInstance(vi.fn());
+            instance.init();
+
+            expect(document.getElementById('gameNameOverrideWarning').textContent)
+                .toContain('「我自訂的」');
+        });
+
+        it('預覽：填 customName + template 顯示 substitution 結果', () => {
+            var instance = createInstance(vi.fn());
+            instance.init();
+
+            var gn = document.getElementById('gameName');
+            gn.value = 'Sura Demo';
+            gn.dispatchEvent(new Event('input'));
+
+            var preview = document.getElementById('replyPreview');
+            expect(preview.textContent).toBe('目前遊戲：Sura Demo');
+            expect(preview.classList.contains('readout-empty')).toBe(false);
+        });
+
+        it('預覽：沒 customName 也沒 steamGameName 時為 empty 狀態', () => {
+            var instance = createInstance(vi.fn());
+            instance.init();
+
+            var preview = document.getElementById('replyPreview');
+            expect(preview.classList.contains('readout-empty')).toBe(true);
+            expect(preview.textContent).toContain('尚未取得遊戲名稱');
+        });
+
+        it('預覽：template 為空時顯示「Template 為空」', () => {
+            var instance = createInstance(vi.fn());
+            instance.init();
+
+            var tpl = document.getElementById('commandReplyTemplate');
+            tpl.value = '';
+            tpl.dispatchEvent(new Event('input'));
+
+            var preview = document.getElementById('replyPreview');
+            expect(preview.textContent).toContain('Template 為空');
+            expect(preview.classList.contains('readout-empty')).toBe(true);
+        });
+
+        it('預覽：mainProcess 跑完後 steamGameName 反映到預覽', async () => {
+            var mockFetch = vi.fn((url) => {
+                if (typeof url === 'string' && url.includes('GetSteamStatus')) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ GameName: 'Elden Ring' }),
+                    });
+                }
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ reply: '目前遊戲：Elden Ring' }),
+                });
+            });
+            var instance = createInstance(mockFetch);
+            instance.init();
+            await instance.mainProcess();
+
+            var preview = document.getElementById('replyPreview');
+            expect(preview.textContent).toBe('目前遊戲：Elden Ring');
+        });
+
+        it('預覽：customName 優先於 steamGameName', async () => {
+            var mockFetch = vi.fn((url) => {
+                if (typeof url === 'string' && url.includes('GetSteamStatus')) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ GameName: 'Steam 抓的' }),
+                    });
+                }
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ reply: '舊內容' }),
+                });
+            });
+            var instance = createInstance(mockFetch);
+            instance.init();
+            document.getElementById('gameName').value = '自訂的';
+            await instance.mainProcess();
+
+            var preview = document.getElementById('replyPreview');
+            expect(preview.textContent).toBe('目前遊戲：自訂的');
+        });
+
+        it('預覽：template 不含 {game} 時顯示原 template', () => {
+            var instance = createInstance(vi.fn());
+            instance.init();
+
+            var gn = document.getElementById('gameName');
+            gn.value = 'Sura Demo';
+            gn.dispatchEvent(new Event('input'));
+
+            var tpl = document.getElementById('commandReplyTemplate');
+            tpl.value = '硬寫不用佔位符';
+            tpl.dispatchEvent(new Event('input'));
+
+            var preview = document.getElementById('replyPreview');
+            expect(preview.textContent).toBe('硬寫不用佔位符');
+        });
+    });
+
+    describe('Loop log（Phase 2）', () => {
+        it('startAutoUpdate 點擊後 log 顯示開始自動更新', async () => {
+            var mockFetch = vi.fn(() =>
+                Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ GameName: '' }),
+                })
+            );
+            var instance = createInstance(mockFetch);
+            instance.init();
+
+            document.getElementById('startAutoUpdate').click();
+            await vi.waitFor(() => {
+                expect(document.getElementById('channel').disabled).toBe(true);
+            });
+
+            var logValue = document.getElementById('log').value;
+            expect(logValue).toContain('▶ 開始自動更新');
+            instance.stop();
+        });
+
+        it('stop 後 log 顯示停止自動更新', async () => {
+            var mockFetch = vi.fn(() =>
+                Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ GameName: '' }),
+                })
+            );
+            var instance = createInstance(mockFetch);
+            instance.init();
+
+            document.getElementById('startAutoUpdate').click();
+            await vi.waitFor(() => {
+                expect(document.getElementById('channel').disabled).toBe(true);
+            });
+            instance.stop();
+
+            var logValue = document.getElementById('log').value;
+            expect(logValue).toContain('■ 停止自動更新');
         });
     });
 
