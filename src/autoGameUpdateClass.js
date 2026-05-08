@@ -200,7 +200,7 @@ class AutoGameUpdate {
                     commandJson['reply'] = templateFullReply;
                     errorMsg = '無法更新目前指令的內容';
                     commandJson = await this.updateStreamelementsCommand(commandJson);
-                    showSuccess('更新成功<br/>' + commandJson['reply']);
+                    showSuccess('更新成功\n' + commandJson['reply']);
                 } else {
                     logStep('比對 reply', { skip: 'reply 已是最新（' + currentGameName + '），跳過更新' });
                 }
